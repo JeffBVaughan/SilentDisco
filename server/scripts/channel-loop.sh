@@ -20,12 +20,11 @@ trap 'rm -f "$playlist"' EXIT
 
 mkdir -p "$music"
 
-# snapserver creates the FIFO (mode=create). Wait for it rather than racing.
-for _ in $(seq 1 60); do
-  [[ -p "$fifo" ]] && break
-  sleep 1
-done
-[[ -p "$fifo" ]] || { echo "FIFO $fifo never appeared; is snapserver running?" >&2; exit 1; }
+# We own the FIFO; snapserver opens it read-only (mode=read in snapserver.conf).
+if [[ ! -p "$fifo" ]]; then
+  rm -f "$fifo"
+  mkfifo -m 644 "$fifo"
+fi
 
 while true; do
   # Build a shuffled concat playlist. Single quotes in filenames are escaped
