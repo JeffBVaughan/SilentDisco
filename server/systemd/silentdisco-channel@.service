@@ -1,0 +1,17 @@
+[Unit]
+Description=SilentDisco looper for the %i channel
+After=snapserver.service
+Requires=snapserver.service
+PartOf=snapserver.service
+
+[Service]
+Type=simple
+User=snapserver
+Group=snapserver
+ExecStart=/usr/local/bin/silentdisco-channel-loop %i
+Restart=always
+RestartSec=2
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
