@@ -31,7 +31,7 @@ USB power for the bench. No battery needed to prove sync and the LED.
 | 8 | 10 kΩ resistor | 1 | | Pull-up on the button if not using the internal one |
 | 9 | 300 Ω resistor | 1 | | In series with the LED data line |
 | 10 | 100 µF capacitor | 1 | | Across the LED supply, standard WS2812 practice |
-| 11 | M2 heat-set inserts + M2x6 screws | 4 | $0.20 | Shell lid |
+| 11 | M3 heat-set inserts (M3×4×5 mm) + M3 screws you already have | 4 | $0.20 | Shell lid |
 | 12 | Hook-up wire 28 AWG silicone, heat shrink | | | |
 | 13 | Printed shell, two parts, translucent cap | 1 | filament | Clear PETG or white PLA for the cap, anything for the body |
 
