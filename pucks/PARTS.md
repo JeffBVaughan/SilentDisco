@@ -22,10 +22,11 @@ USB power for the bench. No battery needed to prove sync and the LED.
 | # | Part | Qty/puck | Approx. unit | Why this one |
 |---|---|---|---|---|
 | 1 | Seeed XIAO ESP32-S3 | 1 | $7.50 | Tiny, USB-C, LiPo charger on board, battery pads on the back |
-| 2 | PCM5102A DAC module with 3.5 mm jack | 1 | $4 | Line-level out drives earbuds and headphones directly; jack included |
+| 2 | PCM5102A DAC module | 1 | $4 | Line-level out drives earbuds directly. Its on-board jack is not used; the version without a jack is fine |
+| 2b | Panel-mount 3.5 mm stereo jack, M6 thread | 1 | $0.60 | Mounts in the shell wall, wired to the DAC's L/R/GND pads. Cable yanks pull on the shell, not the PCB |
 | 3 | 3.7 V 1000 mAh LiPo, JST-PH 2.0 lead | 1 | $5 | 6 to 8 h; the 053450 cell you have is this size |
-| 4 | WS2812B 5 mm LED or single-pixel board | 1 | $0.50 | One pixel is plenty under a translucent cap; a 7 or 8 LED ring if you want a halo |
-| 5 | 12 mm tactile button with cap | 1 | $0.30 | Big enough to feel through the shell |
+| 4 | WS2812 16-pixel ring (44.5 mm OD) | 1 | $4 | The Halo shell is built around this ring; you have one for the first puck |
+| 5 | 12 × 12 × 7.3 mm tactile switch | 1 | $0.30 | Under the printed Ø 28 cap |
 | 6 | 6 mm tactile button | 1 | $0.10 | Volume (optional, hold = volume up/down cycle) |
 | 7 | Slide switch SS12D00, 3-pin | 1 | $0.20 | Hard power off between the battery and the board |
 | 8 | 10 kΩ resistor | 1 | | Pull-up on the button if not using the internal one |
@@ -35,7 +36,7 @@ USB power for the bench. No battery needed to prove sync and the LED.
 | 12 | Hook-up wire 28 AWG silicone, heat shrink | | | |
 | 13 | Printed shell, two parts, translucent cap | 1 | filament | Clear PETG or white PLA for the cap, anything for the body |
 
-Roughly **$18 to $20 per puck**, about **$200 for ten** including spares.
+Roughly **$20 to $22 per puck**, about **$200 for ten** including spares.
 
 ### Fallback board
 
@@ -89,6 +90,13 @@ Battery
 
 Pin numbers are placeholders until the firmware's pin config is settled;
 any free GPIOs work for I2S on the S3.
+
+## Server box extras
+
+- 4 × M2 × 6 screws for the OLED module.
+- Optional 4 × M2.5 × 6 if you prefer screws to pegs for the Pi.
+- 2 × M3 heat-set inserts and 2 × M3 × 8 for the lid.
+- One Ø 47 mm clear PETG window, printed.
 
 ## Not needed
 

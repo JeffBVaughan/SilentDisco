@@ -49,7 +49,7 @@ ring_od   = 44.5;
 ring_id   = 31.7;
 ring_h    = 3.2;
 ring_c    = [33, 21];                 // window centre on the face (x, z)
-win_ro    = 22.8;                     // quadrant windows, outer radius
+win_ro    = 22.2;                     // quadrant windows, outer radius (inside the cradle)
 win_ri    = 15.0;                     // inner radius (centre stays opaque)
 rib_w     = 2.5;                      // ribs between quadrants
 window_t  = 1.2;                      // clear disc
@@ -85,10 +85,12 @@ module base() {
       translate([pi_pos[0] + p[0] - p[1]/2 - 1, outer[1]-wall-1, pi_z + pi[2] - 0.5]) cube([p[1]+2, wall+2, p[2]+1.5]);
     // quadrant windows and the recess for the clear disc
     translate([ring_c[0], 0, ring_c[1]]) rotate([-90,0,0]) {
-      for (a=[0,90,180,270]) rotate([0,0,a+45]) translate([0,0,-1]) linear_extrude(front_t+2) intersection() {
-        difference() { circle(win_ro); circle(win_ri); }
-        polygon([[0,0],[100*cos(45-45+ 0),100*sin(0)],[100*cos(90),100*sin(90)]]);  // first quadrant
-      }
+      // four quadrant windows with ribs of rib_w between them (ribs on the axes)
+      for (a=[0,90,180,270]) rotate([0,0,a]) translate([0,0,-1]) linear_extrude(front_t+2)
+        offset(delta=-rib_w/2) intersection() {
+          difference() { circle(win_ro+rib_w/2); circle(win_ri-rib_w/2); }
+          polygon([[0,0],[100,0],[100,100],[0,100]]);
+        }
       translate([0,0,front_t-window_t]) cylinder(d=window_d+2*fit, h=10);
     }
     // ribs are what is left between the four cuts; the centre disc stays opaque.
