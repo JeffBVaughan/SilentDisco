@@ -31,6 +31,7 @@ for p in base lid window; do openscad -D "part=\"$p\"" -o "dial-$p.stl" dial.sca
 
 ![Halo assembly](previews/halo-assembly.png)
 ![Halo section](previews/halo-section.png)
+![Halo top, lid off](previews/halo-top.png)
 
 Ø 68 × 19 mm. Six printed parts:
 
@@ -43,19 +44,21 @@ for p in base lid window; do openscad -D "part=\"$p\"" -o "dial-$p.stl" dial.sca
 | `cap` | white or clear | top face down | Ø 28 floating button with a flange under the collar. Rendered already flipped. |
 | `clip` | **PETG** | arm up | Pocket clip caught under the two rear floor screws. Optional: `with_clip`. |
 
-Lanyard: a tab with a Ø 3.4 mm tangential hole at 12 o'clock, next to the
-jack, so the puck hangs face out. Optional: `with_lanyard`.
+Lanyard: a tab with a Ø 3.4 mm tangential hole at 12 o'clock, directly below
+the jack and flush with the floor, so the puck hangs face out with the cable
+going up. Optional: `with_lanyard`.
 
 How it goes together, bottom to top:
 
 1. Melt four M3 inserts into the **lid posts** (they face down).
 2. Battery into the base, foam tape underneath, leads toward the centre notch.
-3. Solder the DAC to the XIAO (BCK, LCK, DIN, 3V3, GND; SCK to GND), the
+3. Solder the DAC to the XIAO (BCK, LCK, DIN, GND; SCK to GND; DAC VIN to the battery rail, not 3V3), the
    switch to a GPIO, the ring to BAT+, GND and a GPIO through 300 Ω, the
    battery to the XIAO's BAT pads through the slide switch, and the panel
    jack to the DAC's L, R and GND pads. Drop the boards and switch onto the tray.
 4. Tray onto the bosses, USB-C through the wall slot. Screw the panel jack
-   into the wall; glue the slide switch between its two posts.
+   into the wall with its lugs turned sideways (they end beside the switch);
+   glue the slide switch between its two posts.
 5. Ring onto the four ribs under the lid. Cap into the collar from below,
    flange first. Lower the lid; the posts land on the tray.
 6. Four M3 × 14 screws up from underneath. The clip plate goes under the two

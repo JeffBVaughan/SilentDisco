@@ -36,7 +36,10 @@ sw_plunger_d = 3.6;
 ring_od   = 44.5;               // 16-pixel WS2812 ring
 ring_id   = 31.7;
 ring_h    = 3.2;                // PCB + LED package
-jack_d    = 6.2;                // panel-mount 3.5 mm jack, M6 thread
+jack_d    = 6.2;                // panel-mount 3.5 mm jack PJ30920-D, M6 thread
+jack_body_d   = 8;              // body behind the nut
+jack_body_len = 14.3;           // thread inside the wall + body (4.5 - 2 + 11.8)
+jack_lug_len  = 6.5;            // solder lugs beyond the body (wires attached, bend them sideways)
 power_sw  = [8.6, 3.6, 5];      // SS12D00 slide switch body
 power_sw_lever = [3.2, 7.5];    // lever slot width, travel length
 
@@ -56,7 +59,7 @@ lid_top   = lid_z + lid_t;                // 18.7
 ring_z    = 13.5;                         // ring PCB underside
 boss_r    = 28.5;                         // screw bosses radius (post edge stays inside the wall)
 boss_d    = 8;
-boss_angles = [45, 135, 225, 315];
+boss_angles = [50, 130, 230, 310];   // off the diagonals so the bosses clear the battery corners
 post_d    = 6;                            // lid posts (carry the inserts)
 
 // ---------- cap and collar ----------
@@ -76,18 +79,18 @@ cap_gap      = 0.15;                      // cap boss hovers this far above plun
 xiao_pos   = [-19.5, 0];   // USB-C faces 180 deg
 dac_pos    = [18, 0];      // long axis along Y
 jack_angle = 90;
-jack_z     = 11;           // tray is notched under it
+jack_z     = 9.3;          // body runs under the ring (ring_z 13.5); tray is notched under it
 power_angle = 250;
 power_z    = 11;
 usb_z      = board_z + xiao[2] + xiao_usb[1]/2;
 lanyard_angle = 90;
-lanyard_z  = 3;
+lanyard_z  = 0;            // tab sits below the jack, flush with the floor
 lanyard_hole = 3.4;
 
 // ---------- attachments ----------
 with_lanyard = true;
 with_clip    = true;        // clip screws under the two rear floor screws
-clip_angles  = [225, 315];
+clip_angles  = [230, 310];
 clip_t       = 1.6;
 clip_len     = 34;
 clip_gap     = 1.2;         // shirt thickness it grips
@@ -104,7 +107,7 @@ module base() {
       cylinder(r=outer_r, h=wall_top);
       // lanyard tab
       if (with_lanyard) at_angle(lanyard_angle, outer_r-1)
-        translate([0, 0, lanyard_z]) rbox([7, 10, 7], 1.5);   // local X is radial here
+        translate([0, 0, lanyard_z]) rbox([7, 10, 5.5], 1.5);   // local X is radial here
     }
     // cavity
     translate([0,0,floor_t]) cylinder(r=inner_r, h=50);
@@ -115,7 +118,7 @@ module base() {
     // power switch lever slot
     at_angle(power_angle, outer_r) translate([0,0,power_z]) cube([wall*3, power_sw_lever[1], power_sw_lever[0]], center=true);
     // lanyard hole, tangential
-    if (with_lanyard) at_angle(lanyard_angle, outer_r+2.5) translate([0,0,lanyard_z+3.5]) rotate([90,0,0]) cylinder(d=lanyard_hole, h=20, center=true);
+    if (with_lanyard) at_angle(lanyard_angle, outer_r+2.5) translate([0,0,lanyard_z+2.75]) rotate([90,0,0]) cylinder(d=lanyard_hole, h=20, center=true);
     // floor screw holes with countersink
     for (a=boss_angles) at_angle(a, boss_r) {
       translate([0,0,-1]) cylinder(d=screw_d, h=20);
@@ -147,7 +150,7 @@ module tray() {
       }
     }
     // notch under the panel jack body
-    at_angle(jack_angle, inner_r) translate([-6, 0, tray_z-1]) cube([14, 12, 10], center=true);
+    at_angle(jack_angle, inner_r) translate([-(jack_body_len+1)/2, 0, tray_z-1]) cube([jack_body_len+3, jack_body_d+2.5, 10], center=true);
     // notch for the power switch cradle
     at_angle(power_angle, inner_r) translate([-3, 0, tray_z-1]) cube([8, power_sw[0]+6, 10], center=true);
     // screw pass-through under the lid posts
@@ -260,6 +263,8 @@ module components() {
   color("dimgray") translate([-sw[0]/2, -sw[1]/2, board_z]) cube([sw[0], sw[1], sw[2]-1.5]);
   color("dimgray") translate([0,0,board_z]) cylinder(d=sw_plunger_d, h=sw[2]);
   color("black") translate([0,0,ring_z]) linear_extrude(ring_h) ring2d(ring_od/2, ring_id/2);
+  color("silver") at_angle(jack_angle, inner_r) translate([0,0,jack_z]) rotate([0,-90,0]) { cylinder(d=jack_body_d, h=jack_body_len); translate([0,0,jack_body_len]) cylinder(d=2, h=jack_lug_len); }
+  color("silver") at_angle(jack_angle, outer_r+1) translate([0,0,jack_z]) rotate([0,-90,0]) cylinder(d=jack_d-0.2, h=wall+2.5);
 }
 
 module assembly() {
