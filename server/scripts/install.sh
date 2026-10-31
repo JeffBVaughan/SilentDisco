@@ -104,9 +104,11 @@ sed -e "s/__SNAP_USER__/$SNAP_USER/g" -e "s/__SNAP_GROUP__/$SNAP_GROUP/g" \
   "$here/../systemd/silentdisco-channel@.service" > /etc/systemd/system/silentdisco-channel@.service
 chmod 644 /etc/systemd/system/silentdisco-channel@.service
 systemctl daemon-reload
-systemctl enable --now snapserver
+systemctl enable snapserver
+systemctl restart snapserver   # restart, not just enable: the config may have changed
 for c in "${colours[@]}"; do
-  systemctl enable --now "silentdisco-channel@$c"
+  systemctl enable "silentdisco-channel@$c"
+  systemctl restart "silentdisco-channel@$c"
 done
 
 echo "== hostname"
