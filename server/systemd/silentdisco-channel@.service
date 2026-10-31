@@ -6,8 +6,8 @@ PartOf=snapserver.service
 
 [Service]
 Type=simple
-User=snapserver
-Group=snapserver
+User=__SNAP_USER__
+Group=__SNAP_GROUP__
 ExecStart=/usr/local/bin/silentdisco-channel-loop %i
 Restart=always
 RestartSec=2

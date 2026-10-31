@@ -46,21 +46,35 @@ if [[ ! -d /usr/share/snapserver/snapweb ]]; then
   echo "   The browser client will not work until it is installed; see server/README.md."
 fi
 
+# The service user differs by package: upstream .deb uses "snapserver",
+# Debian/Raspberry Pi OS use "_snapserver". Ask systemd, then fall back.
+SNAP_USER="$(systemctl show snapserver -p User --value 2>/dev/null || true)"
+if [[ -z "$SNAP_USER" ]]; then
+  if id _snapserver >/dev/null 2>&1; then SNAP_USER=_snapserver; else SNAP_USER=snapserver; fi
+fi
+if ! id "$SNAP_USER" >/dev/null 2>&1; then
+  echo "!! cannot find the snapserver service user (tried '$SNAP_USER')" >&2; exit 1
+fi
+SNAP_GROUP="$(id -gn "$SNAP_USER")"
+echo "== snapserver runs as $SNAP_USER:$SNAP_GROUP"
+
 echo "== directories"
 for c in "${colours[@]}"; do
-  install -d -o snapserver -g snapserver /var/lib/silentdisco/music/"$c"
+  install -d -o "$SNAP_USER" -g "$SNAP_GROUP" /var/lib/silentdisco/music/"$c"
 done
-install -d -o snapserver -g snapserver /var/lib/silentdisco/fifo
-# Let the default pi user drop music in without sudo.
-if id -u "${SUDO_USER:-pi}" >/dev/null 2>&1; then
-  usermod -aG snapserver "${SUDO_USER:-pi}"
+install -d -o "$SNAP_USER" -g "$SNAP_GROUP" /var/lib/silentdisco/fifo
+# Let the login user drop music in without sudo.
+if [[ -n "${SUDO_USER:-}" ]] && id -u "$SUDO_USER" >/dev/null 2>&1; then
+  usermod -aG "$SNAP_GROUP" "$SUDO_USER"
   chmod -R g+w /var/lib/silentdisco/music
 fi
 
 echo "== config and services"
 install -m 644 "$here/../config/snapserver.conf" /etc/snapserver.conf
 install -m 755 "$here/channel-loop.sh" /usr/local/bin/silentdisco-channel-loop
-install -m 644 "$here/../systemd/silentdisco-channel@.service" /etc/systemd/system/
+sed -e "s/__SNAP_USER__/$SNAP_USER/g" -e "s/__SNAP_GROUP__/$SNAP_GROUP/g" \
+  "$here/../systemd/silentdisco-channel@.service" > /etc/systemd/system/silentdisco-channel@.service
+chmod 644 /etc/systemd/system/silentdisco-channel@.service
 systemctl daemon-reload
 systemctl enable --now snapserver
 for c in "${colours[@]}"; do
