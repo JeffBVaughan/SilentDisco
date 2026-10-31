@@ -12,6 +12,7 @@
 #   5. Prints the join URL and a QR code for it.
 
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive   # no debconf dialogs; the script sets doc_root itself
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
