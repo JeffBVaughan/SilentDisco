@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puck Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* workshop bench at night: one dark world, LEDs do the colour */
+  --bg:#171a21; --panel:#1f232d; --panel-2:#262b37; --line:#343a49;
+  --ink:#eef0f5; --ink-2:#aeb4c3; --ink-3:#7c8395;
+  --accent:#f2b544;
+  --ch-yellow:#ffd23f; --ch-red:#ff4d5a; --ch-green:#3ddc84; --ch-blue:#4aa3ff;
+  --shell:#d9dce3; --shell-2:#b9bec9; --shell-3:#8d93a1; --clear:#e8f4ff;
+  --font-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --font-body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+  /* layout: one column, concept cards in a wrapping row, then stack + table */
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.5}
+body{padding:28px 16px 64px}
+main{max-width:1100px;margin:0 auto;display:grid;gap:40px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2rem;font-weight:700}
+h2{font-size:1.35rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:700}
+p{margin:0;max-width:66ch;color:var(--ink-2)}
+header{display:grid;gap:10px}
+.brief{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--ink-3);font-size:.9rem;font-family:var(--font-mono)}
+.brief span b{color:var(--ink-2);font-weight:500}
+.channels{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:.9rem;cursor:pointer;color:var(--ink)}
+.chip i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.chip[aria-pressed="true"]{border-color:var(--c)}
+.chip:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:.9rem;color:var(--ink-3)}
+.concepts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;align-content:start}
+.card header{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.card .dims{font-family:var(--font-mono);font-size:.8rem;color:var(--ink-3);white-space:nowrap}
+.views{display:grid;gap:10px}
+.view{background:var(--panel-2);border-radius:10px;padding:8px;display:grid;justify-items:center}
+.view svg{max-width:100%;height:auto}
+.view-label{font-family:var(--font-mono);font-size:.72rem;color:var(--ink-3);justify-self:start;letter-spacing:.04em;text-transform:uppercase}
+.card ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:.92rem;display:grid;gap:4px}
+.card ul li::marker{color:var(--ink-3)}
+.verdict{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:.78rem;padding:3px 9px;border-radius:6px;border:1px solid var(--line);color:var(--ink-2);font-family:var(--font-mono)}
+.tag.good{border-color:var(--ch-green);color:var(--ch-green)}
+.tag.warn{border-color:var(--accent);color:var(--accent)}
+.tap{cursor:pointer}
+.tap:hover .cap{filter:brightness(1.08)}
+.section{display:grid;gap:14px}
+.stack{display:grid;grid-template-columns:minmax(260px,420px) 1fr;gap:24px;align-items:start}
+@media (max-width:720px){.stack{grid-template-columns:1fr}}
+.stack .view{padding:14px}
+.layers{display:grid;gap:8px;counter-reset:layer}
+.layer{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;align-items:start}
+.layer .n{font-family:var(--font-mono);color:var(--accent);font-size:.85rem;padding-top:2px}
+.layer b{display:block;color:var(--ink)}
+.layer span{color:var(--ink-2);font-size:.9rem}
+.layer em{font-style:normal;font-family:var(--font-mono);font-size:.78rem;color:var(--ink-3)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.92rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--font-mono);font-weight:500;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);background:var(--panel)}
+td:first-child{color:var(--ink-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:.85rem}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:6px}
+.note p{font-size:.92rem}
+.q{padding-left:18px;margin:0;color:var(--ink-2);display:grid;gap:6px}
+@media (prefers-reduced-motion:no-preference){.led{transition:fill .25s, filter .25s}}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Puck mockups: three ways to wear a channel</h1>
+  <p>Wired-headphone client for the four-colour house party server. Every concept carries the same guts: ESP32 with a LiPo charger, PCM5102A DAC with its own 3.5 mm jack, a 1000 mAh cell, one WS2812 LED, one channel button. The shell, the button and the clip are the 3D-printed parts, and that is what these sketches are about.</p>
+  <div class="brief">
+    <span><b>Board</b> XIAO ESP32-S3 21×17.5 mm</span>
+    <span><b>DAC</b> PCM5102A module 30×17 mm</span>
+    <span><b>Cell</b> 053450 LiPo 50×34×5 mm, 20 g</span>
+    <span><b>Target</b> under 50 g, 6 h+</span>
+  </div>
+  <div class="channels" role="group" aria-label="Channel colour">
+    <button class="chip" style="--c:var(--ch-yellow)" data-ch="0" aria-pressed="true"><i></i>Yellow</button>
+    <button class="chip" style="--c:var(--ch-red)" data-ch="1" aria-pressed="false"><i></i>Red</button>
+    <button class="chip" style="--c:var(--ch-green)" data-ch="2" aria-pressed="false"><i></i>Green</button>
+    <button class="chip" style="--c:var(--ch-blue)" data-ch="3" aria-pressed="false"><i></i>Blue</button>
+    <span class="hint">Tap any puck's button to cycle, the way a guest would.</span>
+  </div>
+</header>
+
+<section class="section">
+  <h2>Concepts</h2>
+  <div class="concepts">
+
+    <!-- A: Halo -->
+    <article class="card" id="halo">
+      <header><h3>A. Halo</h3><span class="dims">Ø 66 × 20 mm</span></header>
+      <div class="views">
+        <div class="view">
+          <span class="view-label">Front</span>
+          <svg viewBox="0 0 240 200" width="240" height="200" role="img" aria-label="Halo puck front view: round shell, glowing ring, centre button">
+            <defs>
+              <filter id="glowA" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <radialGradient id="shellA" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#b9bec9"/></radialGradient>
+            </defs>
+            <circle cx="120" cy="100" r="82" fill="url(#shellA)" stroke="#8d93a1" stroke-width="1.5"/>
+            <circle class="led" cx="120" cy="100" r="62" fill="none" stroke="var(--ch-yellow)" stroke-width="9" filter="url(#glowA)" opacity=".95"/>
+            <circle cx="120" cy="100" r="62" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/>
+            <g class="tap" data-tap>
+              <circle class="cap" cx="120" cy="100" r="44" fill="#f4f5f8" stroke="#aeb4c3" stroke-width="1.5"/>
+              <circle cx="120" cy="100" r="44" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="1" transform="translate(-1,-1)"/>
+              <text x="120" y="104" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#7c8395">TAP</text>
+            </g>
+            <circle cx="120" cy="18" r="4" fill="#8d93a1"/>
+            <text x="210" y="22" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">jack</text>
+          </svg>
+        </div>
+        <div class="view">
+          <span class="view-label">Side</span>
+          <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Halo puck side view">
+            <rect x="38" y="24" width="164" height="30" rx="12" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <rect class="led" x="46" y="31" width="148" height="3" rx="1.5" fill="var(--ch-yellow)" filter="url(#glowA)"/>
+            <rect x="70" y="16" width="100" height="10" rx="5" fill="#f4f5f8" stroke="#aeb4c3"/>
+            <rect x="34" y="34" width="6" height="10" rx="1" fill="#555b68"/>
+            <rect x="110" y="54" width="22" height="5" rx="2.5" fill="#555b68"/>
+            <rect x="196" y="30" width="8" height="18" rx="2" fill="#555b68"/>
+            <path d="M60 54 q-10 14 -2 20" fill="none" stroke="#8d93a1" stroke-width="2"/>
+            <text x="34" y="72" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">jack</text>
+            <text x="102" y="72" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">USB-C</text>
+            <text x="190" y="72" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">power</text>
+            <text x="56" y="30" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">button cap</text>
+          </svg>
+        </div>
+      </div>
+      <ul>
+        <li>Whole centre is the button: a 44 mm printed cap floating on a 12 mm tactile switch. Impossible to miss in the dark.</li>
+        <li>Your 16-LED ring sits under a clear PETG ring diffuser. Reads as a colour from across the room.</li>
+        <li>Round shell is set by the battery diagonal, so it cannot go below about 62 mm inside.</li>
+        <li>Clip on the back, or a lanyard loop at 12 o'clock next to the jack.</li>
+      </ul>
+      <div class="verdict"><span class="tag good">most visible</span><span class="tag good">best button</span><span class="tag warn">largest</span></div>
+    </article>
+
+    <!-- B: Badge -->
+    <article class="card" id="badge">
+      <header><h3>B. Badge</h3><span class="dims">42 × 62 × 16 mm</span></header>
+      <div class="views">
+        <div class="view">
+          <span class="view-label">Front</span>
+          <svg viewBox="0 0 240 200" width="240" height="200" role="img" aria-label="Badge puck front view: upright rounded rectangle, glowing top bar, clip">
+            <defs>
+              <filter id="glowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <linearGradient id="shellB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#b9bec9"/></linearGradient>
+            </defs>
+            <path d="M104 14 h32 v14 h-32z" fill="#8d93a1"/>
+            <rect x="110" y="6" width="20" height="10" rx="3" fill="#6c7383"/>
+            <rect x="72" y="26" width="96" height="150" rx="14" fill="url(#shellB)" stroke="#8d93a1" stroke-width="1.5"/>
+            <rect class="led" x="84" y="38" width="72" height="12" rx="6" fill="var(--ch-yellow)" filter="url(#glowB)"/>
+            <text x="120" y="108" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="700" font-size="36" fill="#8d93a1" opacity=".6">07</text>
+            <g class="tap" data-tap>
+              <rect class="cap" x="168" y="70" width="10" height="34" rx="4" fill="#f4f5f8" stroke="#aeb4c3" stroke-width="1.5"/>
+            </g>
+            <text x="184" y="92" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">channel</text>
+            <rect x="168" y="112" width="10" height="20" rx="4" fill="#dfe2e8" stroke="#aeb4c3"/>
+            <text x="184" y="126" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">volume</text>
+            <circle cx="120" cy="176" r="4" fill="#555b68"/>
+            <text x="120" y="194" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">jack, cable hangs down</text>
+          </svg>
+        </div>
+        <div class="view">
+          <span class="view-label">Side</span>
+          <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Badge puck side view with clip">
+            <rect x="96" y="12" width="36" height="60" rx="8" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <rect class="led" x="100" y="18" width="28" height="3" rx="1.5" fill="var(--ch-yellow)" filter="url(#glowB)"/>
+            <path d="M132 16 q14 0 14 10 v34" fill="none" stroke="#8d93a1" stroke-width="3" stroke-linecap="round"/>
+            <rect x="92" y="30" width="5" height="14" rx="2" fill="#f4f5f8" stroke="#aeb4c3"/>
+            <rect x="108" y="72" width="12" height="4" rx="2" fill="#555b68"/>
+            <text x="152" y="40" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">PETG clip,</text>
+            <text x="152" y="50" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">printed in one piece</text>
+            <text x="56" y="40" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">button</text>
+            <text x="96" y="20" font-family="IBM Plex Mono" font-size="8" fill="#7c8395" transform="rotate(-90 96 20) translate(-60 -8)"></text>
+          </svg>
+        </div>
+      </div>
+      <ul>
+        <li>Battery lies flat behind the boards, so the badge is thin and the footprint is just the cell plus walls.</li>
+        <li>LED bar at the top behind a clear window; six to eight pixels in a row, or your 8-LED ring cut down to a strip.</li>
+        <li>Side button like a phone: thumb finds it without looking. Second side button for volume.</li>
+        <li>Big printed number on the face, so "puck 07" in the server list is the one on your shirt.</li>
+      </ul>
+      <div class="verdict"><span class="tag good">thinnest</span><span class="tag good">cheapest print</span><span class="tag warn">glow is a bar, not a halo</span></div>
+    </article>
+
+    <!-- C: Cable clip -->
+    <article class="card" id="clip">
+      <header><h3>C. Cable clip</h3><span class="dims">46 × 32 × 14 mm</span></header>
+      <div class="views">
+        <div class="view">
+          <span class="view-label">Front</span>
+          <svg viewBox="0 0 240 200" width="240" height="200" role="img" aria-label="Cable clip puck front view: small pebble clipped on the headphone cable with a glowing dome">
+            <defs>
+              <filter id="glowC" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <radialGradient id="shellC" cx="40%" cy="35%" r="80%"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#b9bec9"/></radialGradient>
+            </defs>
+            <path d="M120 0 v60" stroke="#3b4150" stroke-width="4"/>
+            <path d="M120 140 v60" stroke="#3b4150" stroke-width="4"/>
+            <rect x="62" y="58" width="116" height="84" rx="26" fill="url(#shellC)" stroke="#8d93a1" stroke-width="1.5"/>
+            <g class="tap" data-tap>
+              <circle class="cap led" cx="100" cy="100" r="22" fill="var(--ch-yellow)" filter="url(#glowC)"/>
+              <circle cx="100" cy="100" r="22" fill="none" stroke="#ffffff" stroke-opacity=".5"/>
+              <text x="100" y="104" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#171a21">TAP</text>
+            </g>
+            <rect x="140" y="84" width="22" height="32" rx="6" fill="#dfe2e8" stroke="#aeb4c3"/>
+            <text x="151" y="104" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">vol</text>
+            <text x="186" y="76" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">cable in</text>
+            <text x="186" y="134" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">cable out</text>
+            <text x="20" y="104" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">dome = LED</text>
+            <text x="20" y="116" font-family="IBM Plex Mono" font-size="9" fill="#7c8395">+ button</text>
+          </svg>
+        </div>
+        <div class="view">
+          <span class="view-label">Side</span>
+          <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Cable clip puck side view with spring clip">
+            <rect x="80" y="26" width="92" height="26" rx="10" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <circle class="led" cx="110" cy="26" r="9" fill="var(--ch-yellow)" filter="url(#glowC)"/>
+            <path d="M84 52 q0 14 14 14 h56 q14 0 14 -14" fill="none" stroke="#8d93a1" stroke-width="3" stroke-linecap="round"/>
+            <rect x="120" y="52" width="14" height="4" rx="2" fill="#555b68"/>
+            <text x="120" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">spring clip grips cable or collar</text>
+            <text x="186" y="40" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">dome cap</text>
+          </svg>
+        </div>
+      </div>
+      <ul>
+        <li>Lives on the headphone cable near the collar, like an inline remote. Nothing to pin on, nothing to forget on the table.</li>
+        <li>The glowing dome is the button: a clear printed cap over one pixel and a 12 mm switch.</li>
+        <li>Too small for the 1000 mAh cell. Takes a 602535 (500 mAh), so about 3 to 4 hours. Fine for a party, tight for a long one.</li>
+        <li>Least visible to others, which weakens the "switch to your friend's colour" idea.</li>
+      </ul>
+      <div class="verdict"><span class="tag good">smallest</span><span class="tag good">never lost</span><span class="tag warn">half the battery</span><span class="tag warn">hard to see</span></div>
+    </article>
+
+  </div>
+</section>
+
+<section class="section">
+  <h2>What is inside, bottom to top</h2>
+  <p>The stack is the same for all three; only the outline changes. Drawn for the Halo because it is the tallest.</p>
+  <div class="stack">
+    <div class="view">
+      <svg viewBox="0 0 320 330" width="320" height="330" role="img" aria-label="Exploded view of the puck layers">
+        <defs>
+          <filter id="glowS" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- 1 base shell -->
+        <ellipse cx="150" cy="290" rx="110" ry="30" fill="#b9bec9" stroke="#8d93a1" stroke-width="1.5"/>
+        <ellipse cx="150" cy="290" rx="98" ry="24" fill="#9fa5b2"/>
+        <text x="270" y="292" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">1</text>
+        <!-- 2 battery -->
+        <rect x="100" y="228" width="100" height="40" rx="4" fill="#c7cad1" stroke="#8d93a1" transform="skewX(-20)"/>
+        <text x="270" y="250" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">2</text>
+        <!-- 3 boards -->
+        <rect x="92" y="186" width="54" height="30" rx="2" fill="#2f6b4f" stroke="#8d93a1" transform="skewX(-20)"/>
+        <rect x="166" y="186" width="64" height="30" rx="2" fill="#5b3b7a" stroke="#8d93a1" transform="skewX(-20)"/>
+        <circle cx="206" cy="201" r="4" fill="#555b68"/>
+        <text x="270" y="206" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">3</text>
+        <!-- 4 switch + LED ring -->
+        <ellipse cx="150" cy="150" rx="70" ry="18" fill="none" stroke="var(--ch-yellow)" stroke-width="6" filter="url(#glowS)" class="led"/>
+        <rect x="140" y="140" width="20" height="14" rx="2" fill="#555b68"/>
+        <text x="270" y="154" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">4</text>
+        <!-- 5 ring diffuser -->
+        <ellipse cx="150" cy="106" rx="106" ry="28" fill="#e8f4ff" fill-opacity=".55" stroke="#aeb4c3"/>
+        <ellipse cx="150" cy="106" rx="62" ry="16" fill="#1f232d"/>
+        <text x="270" y="110" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">5</text>
+        <!-- 6 button cap -->
+        <ellipse cx="150" cy="56" rx="60" ry="16" fill="#f4f5f8" stroke="#aeb4c3" stroke-width="1.5"/>
+        <text x="270" y="60" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">6</text>
+        <!-- 7 clip -->
+        <path d="M60 300 q-16 14 0 24 h40" fill="none" stroke="#8d93a1" stroke-width="3"/>
+        <text x="40" y="320" font-family="IBM Plex Mono" font-size="10" fill="#7c8395">7</text>
+      </svg>
+    </div>
+    <div class="layers">
+      <div class="layer"><span class="n">1</span><div><b>Base shell</b><span>Printed in anything. Holds the battery pocket, the jack and USB-C cut-outs, the slide switch slot, and four M2 heat-set inserts.</span></div></div>
+      <div class="layer"><span class="n">2</span><div><b>LiPo 1000 mAh</b><span>053450 cell lying flat. Foam tape underneath, a printed rib on each side so it cannot shift. The thickest single part at 5 mm.</span> <em>~20 g</em></div></div>
+      <div class="layer"><span class="n">3</span><div><b>Carrier plate with the two boards</b><span>XIAO ESP32-S3 and the PCM5102A side by side on a thin printed tray, jack pointing out through the wall. Six wires between them. The tray screws to the base so the boards never rest on the battery.</span> <em>21×17.5 + 30×17 mm</em></div></div>
+      <div class="layer"><span class="n">4</span><div><b>Tactile switch and LED ring</b><span>12 mm switch centred on the tray, 16-pixel WS2812 ring around it. The ring draws from the battery rail, data from one GPIO through 300 Ω.</span></div></div>
+      <div class="layer"><span class="n">5</span><div><b>Ring diffuser</b><span>Clear PETG, 1.2 mm thick, 2 perimeters and 0 % infill so it scatters. Snaps into the base and traps the ring. This is the part that makes the colour read from across the room.</span></div></div>
+      <div class="layer"><span class="n">6</span><div><b>Button cap</b><span>44 mm floating cap with a 0.3 mm clearance to the diffuser and four small retaining hooks so it cannot fall out. Travel is whatever the switch gives, about 0.25 mm, with a satisfying click.</span></div></div>
+      <div class="layer"><span class="n">7</span><div><b>Clip</b><span>Printed separately in PETG for flex, screws onto the base with two of the inserts. Swap for a lanyard loop by printing a different part.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Side by side</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th></th><th>A. Halo</th><th>B. Badge</th><th>C. Cable clip</th></tr></thead>
+      <tbody>
+        <tr><td>Outside size</td><td class="num">Ø 66 × 20 mm</td><td class="num">42 × 62 × 16 mm</td><td class="num">46 × 32 × 14 mm</td></tr>
+        <tr><td>Weight, estimated</td><td class="num">48 g</td><td class="num">44 g</td><td class="num">30 g</td></tr>
+        <tr><td>Cell</td><td>1000 mAh, 6 to 8 h</td><td>1000 mAh, 6 to 8 h</td><td>500 mAh, 3 to 4 h</td></tr>
+        <tr><td>LED</td><td>16-pixel ring, full halo</td><td>6 to 8 pixel bar</td><td>1 pixel dome</td></tr>
+        <tr><td>Visible from behind</td><td>Yes, the ring glows out the edge</td><td>No</td><td>No</td></tr>
+        <tr><td>Button</td><td>Whole face, 44 mm cap</td><td>Side, phone-style</td><td>The dome itself</td></tr>
+        <tr><td>Printed parts</td><td>Base, diffuser, cap, tray, clip (5)</td><td>Base, lid with window, cap, clip (4)</td><td>Base, lid, dome, spring clip (4)</td></tr>
+        <tr><td>Print time, rough</td><td class="num">1 h 40</td><td class="num">1 h 10</td><td class="num">50 min</td></tr>
+        <tr><td>Clear filament use</td><td>Diffuser ring</td><td>Window only</td><td>Dome only</td></tr>
+        <tr><td>How it is worn</td><td>Clip or lanyard, on the chest</td><td>Clip on a pocket or collar</td><td>On the cable, under the chin</td></tr>
+        <tr><td>Good for</td><td>The party look, finding friends by colour</td><td>Thin, numbered, easy to hand out</td><td>Over-ear headphones from the basket, no pins</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Printed buttons and how they feel</h2>
+  <div class="notes">
+    <div class="note"><h3>Floating cap on a tactile switch</h3><p>The cap is a loose part with hooks; the switch does the spring and the click. Most reliable, zero tuning. Use a 12 mm switch with a 7 mm plunger so the cap has a stable centre.</p></div>
+    <div class="note"><h3>Living-hinge button printed into the lid</h3><p>One part, no loose cap. A 0.8 mm bridge in PETG flexes a few thousand cycles before it cracks. Works for the Badge's side buttons; too stiff for a 44 mm face.</p></div>
+    <div class="note"><h3>Clear dome over the pixel</h3><p>For the Cable clip. Print the dome in clear PETG with 0 % infill and a single top layer; sand with 400 then 1000 grit for an even glow. The pixel sits 3 mm below the dome.</p></div>
+    <div class="note"><h3>Tolerances to print first</h3><p>Before any full shell, print a 20 mm test coupon: a cap in a hole at 0.2, 0.3 and 0.4 mm clearance, and a snap lip at 0.4 and 0.6 mm. Pick what moves freely on your printer and bake it into the model.</p></div>
+  </div>
+</section>
+
+
+<section class="section" id="server">
+  <h2>Server housing</h2>
+  <p>The Pi 3B lives in a printed box with a face that tells the room what is going on: one 16-pixel ring split into four quadrants, one per colour, each quadrant filling up with listeners, and the 0.96" OLED showing the join QR code so nobody has to type an address. The Pi drives both straight off its header, so there is nothing extra to flash. Ethernet and power come in the back.</p>
+  <div class="concepts">
+
+    <article class="card" id="dial">
+      <header><h3>D. Dial</h3><span class="dims">110 × 80 × 42 mm</span></header>
+      <div class="views">
+        <div class="view">
+          <span class="view-label">Front</span>
+          <svg viewBox="0 0 300 200" width="300" height="200" role="img" aria-label="Dial server box front: quadrant ring on the left, OLED with QR code on the right">
+            <defs><filter id="glowD" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <rect x="20" y="30" width="260" height="140" rx="12" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <circle cx="95" cy="100" r="48" fill="#1f232d"/>
+            <path d="M95 52 A48 48 0 0 1 143 100" fill="none" stroke="var(--ch-yellow)" stroke-width="10" filter="url(#glowD)"/>
+            <path d="M143 100 A48 48 0 0 1 95 148" fill="none" stroke="var(--ch-red)" stroke-width="10" filter="url(#glowD)" opacity=".55"/>
+            <path d="M95 148 A48 48 0 0 1 47 100" fill="none" stroke="var(--ch-green)" stroke-width="10" filter="url(#glowD)" opacity=".85"/>
+            <path d="M47 100 A48 48 0 0 1 95 52" fill="none" stroke="var(--ch-blue)" stroke-width="10" filter="url(#glowD)" opacity=".3"/>
+            <text x="95" y="96" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="700" font-size="22" fill="#eef0f5">14</text>
+            <text x="95" y="112" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#aeb4c3">listening</text>
+            <rect x="170" y="62" width="92" height="76" rx="4" fill="#0b0d12" stroke="#555b68"/>
+            <g fill="#eef0f5" transform="translate(178,70)">
+              <rect x="0" y="0" width="18" height="18"/><rect x="3" y="3" width="12" height="12" fill="#0b0d12"/><rect x="6" y="6" width="6" height="6"/>
+              <rect x="42" y="0" width="18" height="18"/><rect x="45" y="3" width="12" height="12" fill="#0b0d12"/><rect x="48" y="6" width="6" height="6"/>
+              <rect x="0" y="42" width="18" height="18"/><rect x="3" y="45" width="12" height="12" fill="#0b0d12"/><rect x="6" y="48" width="6" height="6"/>
+              <rect x="24" y="3" width="3" height="3"/><rect x="30" y="0" width="3" height="3"/><rect x="24" y="9" width="6" height="3"/><rect x="33" y="6" width="3" height="6"/><rect x="21" y="24" width="3" height="3"/><rect x="27" y="21" width="6" height="3"/><rect x="36" y="24" width="3" height="6"/><rect x="45" y="24" width="3" height="3"/><rect x="51" y="21" width="3" height="9"/><rect x="24" y="33" width="3" height="6"/><rect x="30" y="36" width="9" height="3"/><rect x="42" y="33" width="3" height="3"/><rect x="48" y="36" width="6" height="3"/><rect x="0" y="24" width="3" height="3"/><rect x="6" y="27" width="6" height="3"/><rect x="12" y="21" width="3" height="6"/><rect x="24" y="45" width="3" height="3"/><rect x="30" y="48" width="3" height="6"/><rect x="36" y="45" width="6" height="3"/><rect x="45" y="48" width="3" height="3"/><rect x="51" y="45" width="3" height="9"/><rect x="24" y="57" width="6" height="3"/><rect x="33" y="54" width="3" height="3"/><rect x="39" y="57" width="9" height="3"/><rect x="54" y="57" width="6" height="3"/>
+            </g>
+            <text x="216" y="152" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">0.96" OLED: join QR</text>
+            <text x="95" y="162" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">16-pixel ring, 4 per colour</text>
+          </svg>
+        </div>
+        <div class="view">
+          <span class="view-label">Back and inside</span>
+          <svg viewBox="0 0 300 120" width="300" height="120" role="img" aria-label="Dial server box back panel and internal layout">
+            <rect x="20" y="14" width="120" height="60" rx="8" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <rect x="30" y="30" width="22" height="18" rx="2" fill="#555b68"/>
+            <rect x="58" y="30" width="30" height="18" rx="2" fill="#555b68"/>
+            <rect x="96" y="34" width="14" height="8" rx="3" fill="#555b68"/>
+            <path d="M116 26 h12 M116 30 h12 M116 34 h12 M116 38 h12 M116 42 h12" stroke="#8d93a1" stroke-width="1.5"/>
+            <text x="28" y="60" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">eth</text>
+            <text x="62" y="60" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">USB</text>
+            <text x="90" y="60" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">USB-C</text>
+            <text x="116" y="60" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">vents</text>
+            <text x="20" y="90" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">back panel; USB-C lead to the Pi inside</text>
+            <rect x="170" y="14" width="110" height="80" rx="8" fill="none" stroke="#8d93a1" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <rect x="178" y="30" width="85" height="56" rx="3" fill="#2f6b4f" stroke="#8d93a1"/>
+            <text x="220" y="62" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">Pi 3B 85×56</text>
+            <rect x="178" y="18" width="85" height="8" rx="2" fill="#555b68"/>
+            <text x="170" y="108" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">top view: face sits 12 mm above the Pi</text>
+          </svg>
+        </div>
+      </div>
+      <ul>
+        <li>Fits the Pi flat, ports out the back. A short panel-mount USB-C lead inside means the outside is all USB-C.</li>
+        <li>Ring behind a clear PETG window with four printed ribs so the quadrants do not bleed into each other.</li>
+        <li>OLED sits behind a 25 × 14 mm window; the Pi draws the QR and swaps to now-playing on a timer.</li>
+        <li>Vent slots on the back and underside; the 3B runs warm but does not need a fan for this.</li>
+      </ul>
+      <div class="verdict"><span class="tag good">small</span><span class="tag good">quick print</span><span class="tag warn">pucks charge elsewhere</span></div>
+    </article>
+
+    <article class="card" id="dock">
+      <header><h3>E. Dock</h3><span class="dims">260 × 110 × 60 mm</span></header>
+      <div class="views">
+        <div class="view">
+          <span class="view-label">Front, pucks docked</span>
+          <svg viewBox="0 0 300 200" width="300" height="200" role="img" aria-label="Dock server box: a long tray with ten pucks standing in slots on top, ring and OLED on the front face">
+            <defs><filter id="glowE" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <rect x="14" y="90" width="272" height="80" rx="10" fill="#c9cdd6" stroke="#8d93a1" stroke-width="1.5"/>
+            <g>
+              <circle cx="40" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="40" cy="78" r="11" fill="none" stroke="var(--ch-green)" stroke-width="3" filter="url(#glowE)"/>
+              <circle cx="78" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="78" cy="78" r="11" fill="none" stroke="var(--ch-yellow)" stroke-width="3" filter="url(#glowE)"/>
+              <circle cx="116" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="116" cy="78" r="11" fill="none" stroke="var(--ch-blue)" stroke-width="3" filter="url(#glowE)"/>
+              <circle cx="154" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="154" cy="78" r="11" fill="none" stroke="var(--ch-red)" stroke-width="3" filter="url(#glowE)"/>
+              <circle cx="192" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="192" cy="78" r="11" fill="none" stroke="var(--ch-green)" stroke-width="3" filter="url(#glowE)"/>
+              <circle cx="230" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1"/><circle cx="230" cy="78" r="11" fill="none" stroke="#8d93a1" stroke-width="3"/>
+              <circle cx="268" cy="78" r="16" fill="#e4e6eb" stroke="#8d93a1" stroke-dasharray="3 2" fill-opacity=".3"/>
+              <text x="268" y="81" text-anchor="middle" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">empty</text>
+            </g>
+            <text x="150" y="50" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">pucks stand in slots over a USB-C plug; LED shows charge</text>
+            <circle cx="52" cy="130" r="24" fill="#1f232d"/>
+            <path d="M52 106 A24 24 0 0 1 76 130" fill="none" stroke="var(--ch-yellow)" stroke-width="6" filter="url(#glowE)"/>
+            <path d="M76 130 A24 24 0 0 1 52 154" fill="none" stroke="var(--ch-red)" stroke-width="6" filter="url(#glowE)" opacity=".55"/>
+            <path d="M52 154 A24 24 0 0 1 28 130" fill="none" stroke="var(--ch-green)" stroke-width="6" filter="url(#glowE)" opacity=".85"/>
+            <path d="M28 130 A24 24 0 0 1 52 106" fill="none" stroke="var(--ch-blue)" stroke-width="6" filter="url(#glowE)" opacity=".3"/>
+            <rect x="92" y="112" width="56" height="36" rx="3" fill="#0b0d12" stroke="#555b68"/>
+            <text x="120" y="134" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">QR</text>
+            <text x="170" y="124" font-family="IBM Plex Mono" font-size="9" fill="#3b4150">YELLOW  RED</text>
+            <text x="170" y="140" font-family="IBM Plex Mono" font-size="9" fill="#3b4150">GREEN   BLUE</text>
+            <rect x="226" y="118" width="40" height="20" rx="4" fill="#dfe2e8" stroke="#aeb4c3"/>
+            <text x="246" y="131" text-anchor="middle" font-family="IBM Plex Mono" font-size="7" fill="#7c8395">power</text>
+            <text x="150" y="186" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">front: ring, OLED, printed channel names, one switch</text>
+          </svg>
+        </div>
+        <div class="view">
+          <span class="view-label">Inside, top off</span>
+          <svg viewBox="0 0 300 110" width="300" height="110" role="img" aria-label="Dock internal layout">
+            <rect x="14" y="10" width="272" height="90" rx="8" fill="none" stroke="#8d93a1" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <rect x="24" y="22" width="85" height="56" rx="3" fill="#2f6b4f" stroke="#8d93a1"/>
+            <text x="66" y="54" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">Pi 3B</text>
+            <rect x="120" y="22" width="70" height="56" rx="3" fill="#555b68" stroke="#8d93a1"/>
+            <text x="155" y="48" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">6-port USB</text>
+            <text x="155" y="60" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">charger ×2</text>
+            <rect x="200" y="22" width="76" height="56" rx="3" fill="#8d93a1" stroke="#8d93a1" fill-opacity=".3"/>
+            <text x="238" y="48" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">cable bay,</text>
+            <text x="238" y="60" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#eef0f5">spare earbuds</text>
+            <text x="150" y="94" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#7c8395">one mains lead feeds the chargers and the Pi</text>
+          </svg>
+        </div>
+      </div>
+      <ul>
+        <li>Server, charging rail and the puck basket in one box. Pick the box up and the whole party moves.</li>
+        <li>Ten slots along the top, each with a short USB-C plug fixed in the floor of the slot. Drop a puck in, it charges and its LED shows charge colour.</li>
+        <li>Same ring and OLED face as the Dial, plus the four channel names printed in raised letters.</li>
+        <li>Big print, so split it: a base in two halves, a top plate per five slots, dovetails between them.</li>
+      </ul>
+      <div class="verdict"><span class="tag good">one box to carry</span><span class="tag good">pucks never un-charged</span><span class="tag warn">4 to 6 h print, several parts</span><span class="tag warn">slot shape locks you to one puck design</span></div>
+    </article>
+
+  </div>
+  <div class="notes">
+    <div class="note"><h3>Driving the face from the Pi</h3><p>The WS2812 ring takes one GPIO (pin 18 with the rpi_ws281x library) and the OLED takes I2C. A small Python service polls Snapcast's JSON-RPC every second, counts clients per stream, and lights 0 to 4 pixels per quadrant. The D1 mini stays in the drawer unless you want the face to be a separate, detachable panel.</p></div>
+    <div class="note"><h3>What the OLED shows</h3><p>A QR code for the join URL fits the 128 × 64 panel at 2 pixels per module. It alternates every ten seconds with now-playing for the busiest channel, and shows the Pi's IP in small text if the network changes.</p></div>
+    <div class="note"><h3>Heat and power</h3><p>The 3B idles around 40 °C and streaming four FLAC channels adds little. Slots in the floor and back are enough. Feed the Pi from a proper 2.5 A supply; the Dock's chargers get their own feed so puck charging never browns out the server.</p></div>
+    <div class="note"><h3>Start with the Dial</h3><p>Print it this week, since it only needs the Pi and the parts on your bench. The Dock is the second version once the puck outline is frozen, because its slots are cut to that shape.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Decisions that change the model</h2>
+  <ol class="q">
+    <li>Halo, Badge or Cable clip for the first ten? Or Halo for the chest and a few Cable clips for the over-ear basket?</li>
+    <li>Lanyard or clip? A lanyard loop costs nothing to add to all three.</li>
+    <li>Volume button: yes, or hold-to-cycle on the one button and keep the shell cleaner?</li>
+    <li>Number on the face: printed in, or a sticker so the parts stay identical?</li>
+    <li>Jack orientation: cable exits top (towards the head) or bottom (tucks into a pocket)?</li>
+    <li>Server box: Dial now and Dock later, or straight to the Dock?</li>
+    <li>Should the Dock's slots also hold the spare wired earbuds, or is that a separate basket?</li>
+  </ol>
+</section>
+
+</main>
+<script>
+(function(){
+  var colours=['var(--ch-yellow)','var(--ch-red)','var(--ch-green)','var(--ch-blue)'];
+  var current=0;
+  var leds=document.querySelectorAll('.led');
+  var chips=document.querySelectorAll('.chip');
+  function paint(i){
+    current=(i+4)%4;
+    leds.forEach(function(el){
+      var isStroke=el.getAttribute('fill')==='none';
+      if(isStroke){el.setAttribute('stroke',colours[current]);}
+      else{el.setAttribute('fill',colours[current]);}
+    });
+    chips.forEach(function(c){c.setAttribute('aria-pressed',String(Number(c.dataset.ch)===current));});
+  }
+  chips.forEach(function(c){c.addEventListener('click',function(){paint(Number(c.dataset.ch));});});
+  document.querySelectorAll('[data-tap]').forEach(function(t){
+    t.setAttribute('tabindex','0');t.setAttribute('role','button');t.setAttribute('aria-label','Cycle channel');
+    t.addEventListener('click',function(){paint(current+1);});
+    t.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();paint(current+1);}});
+  });
+  paint(0);
+})();
+</script>
+</body>
+</html>
