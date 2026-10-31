@@ -47,13 +47,19 @@ cd SilentDisco/server/scripts
 sudo ./install.sh
 ```
 
-The script installs ffmpeg and the official Snapcast server package (which
-bundles Snapweb, the browser client), writes `/etc/snapserver.conf` with the
-four channels, creates the music folders, starts the four looper services,
-and prints the join URL plus a QR code.
+The script installs ffmpeg and the Snapcast server package, fetches Snapweb
+(the browser client) from its own release page if the server package only
+shipped a placeholder, writes `/etc/snapserver.conf` with the four channels,
+creates the music folders, starts the four looper services, and prints the
+join URL plus a QR code.
 
-If the pinned Snapcast release has no `.deb` for your OS it falls back to
-the one in apt. Either works; the pinned one is newer.
+Raspberry Pi OS Trixie already ships snapcast 0.31 in apt, so the pinned
+release download failing is normal there. Debian's package does not include
+Snapweb, which is why the script downloads it separately.
+
+The script adds your login user to the snapserver group so you can drop music
+in without sudo. That takes effect on your next login: log out and back in,
+or run `newgrp _snapserver`, before copying files.
 
 ## 3. Add music
 

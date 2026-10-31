@@ -41,9 +41,35 @@ if ! dpkg -s snapserver 2>/dev/null | grep -q "Version: ${SNAPCAST_VERSION}"; th
   rm -rf "$tmp"
 fi
 
-if [[ ! -d /usr/share/snapserver/snapweb ]]; then
-  echo "!! Snapweb not found at /usr/share/snapserver/snapweb."
-  echo "   The browser client will not work until it is installed; see server/README.md."
+# Snapweb, the browser client. The upstream .deb bundles it under
+# /usr/share/snapserver/snapweb; Debian's package ships only a placeholder
+# page there, so fetch the real thing from the Snapweb releases.
+snapweb_is_real() { [[ -f "$1/index.html" ]] && ! grep -qi "placeholder" "$1/index.html"; }
+DOC_ROOT=""
+if snapweb_is_real /usr/share/snapweb; then DOC_ROOT=/usr/share/snapweb
+elif snapweb_is_real /usr/share/snapserver/snapweb; then DOC_ROOT=/usr/share/snapserver/snapweb
+else
+  echo "== snapweb (browser client)"
+  apt-get install -y -qq unzip >/dev/null
+  tag="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/badaix/snapweb/releases/latest | sed 's#.*/##')"
+  ver="${tag#v}"
+  tmp="$(mktemp -d)"
+  if [[ -n "$ver" ]] && curl -fsSL -o "$tmp/snapweb.deb" \
+      "https://github.com/badaix/snapweb/releases/download/${tag}/snapweb_${ver}-1_all.deb"; then
+    apt-get install -y -qq "$tmp/snapweb.deb"
+    DOC_ROOT=/usr/share/snapweb
+  elif [[ -n "$ver" ]] && curl -fsSL -o "$tmp/snapweb.zip" \
+      "https://github.com/badaix/snapweb/releases/download/${tag}/snapweb.zip"; then
+    install -d /usr/share/snapserver/snapweb
+    unzip -oq "$tmp/snapweb.zip" -d /usr/share/snapserver/snapweb
+    DOC_ROOT=/usr/share/snapserver/snapweb
+  else
+    echo "!! could not download Snapweb (tag '${tag:-unknown}'). The browser client will"
+    echo "   show a placeholder until it is installed; see server/README.md."
+    DOC_ROOT=/usr/share/snapserver/snapweb
+  fi
+  rm -rf "$tmp"
+  snapweb_is_real "$DOC_ROOT" && echo "   Snapweb ${ver} installed at $DOC_ROOT"
 fi
 
 # The service user differs by package: upstream .deb uses "snapserver",
@@ -70,7 +96,8 @@ if [[ -n "${SUDO_USER:-}" ]] && id -u "$SUDO_USER" >/dev/null 2>&1; then
 fi
 
 echo "== config and services"
-install -m 644 "$here/../config/snapserver.conf" /etc/snapserver.conf
+sed -e "s#__DOC_ROOT__#$DOC_ROOT#" "$here/../config/snapserver.conf" > /etc/snapserver.conf
+chmod 644 /etc/snapserver.conf
 install -m 755 "$here/channel-loop.sh" /usr/local/bin/silentdisco-channel-loop
 sed -e "s/__SNAP_USER__/$SNAP_USER/g" -e "s/__SNAP_GROUP__/$SNAP_GROUP/g" \
   "$here/../systemd/silentdisco-channel@.service" > /etc/systemd/system/silentdisco-channel@.service
@@ -95,5 +122,9 @@ echo "   Join page:   http://${ip}:1780/   (or http://silentdisco.local:1780/)"
 echo "   Music goes in: /var/lib/silentdisco/music/{yellow,red,green,blue}/"
 echo "   Logs:        journalctl -fu snapserver -u 'silentdisco-channel@*'"
 echo "================================================================"
+if [[ -n "${SUDO_USER:-}" ]]; then
+  echo " Note: $SUDO_USER was added to the $SNAP_GROUP group. Log out and back in"
+  echo "       (or run: newgrp $SNAP_GROUP) before copying music without sudo."
+fi
 echo
 qrencode -t ANSIUTF8 "http://${ip}:1780/"
