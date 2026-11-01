@@ -1,0 +1,20 @@
+# MPD for one SilentDisco channel. install.sh renders one per colour.
+music_directory     "__BASE__/music/__COLOUR__"
+playlist_directory  "__BASE__/mpd/__COLOUR__/playlists"
+db_file             "__BASE__/mpd/__COLOUR__/db"
+state_file          "__BASE__/mpd/__COLOUR__/state"
+log_file            "syslog"
+bind_to_address     "127.0.0.1"
+port                "__PORT__"
+auto_update         "yes"
+restore_paused      "no"
+# keep the queue playing forever; the host page can change these
+audio_output {
+    type        "fifo"
+    name        "snapcast"
+    path        "__BASE__/fifo/__COLOUR__"
+    format      "48000:16:2"
+    mixer_type  "software"
+}
+replaygain          "track"
+replaygain_limit    "yes"

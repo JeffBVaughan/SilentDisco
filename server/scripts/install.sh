@@ -78,6 +78,8 @@ SNAPWEB_DIR="$DOC_ROOT"
 WWW=/var/lib/silentdisco/www
 install -d "$WWW"
 install -m 644 "$here/../../web/party/index.html" "$WWW/index.html"
+install -d "$WWW/host"
+install -m 644 "$here/../../web/host/index.html" "$WWW/host/index.html"
 ln -sfn "$SNAPWEB_DIR" "$WWW/snapweb"
 DOC_ROOT="$WWW"
 

@@ -61,6 +61,12 @@ const params = new URLSearchParams(location.search);
 const HOST = params.get("host") || location.host;           // ?host=pi:1780 for testing
 const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + HOST + "/stream";
 const RPC_URL = (location.protocol === "https:" ? "https://" : "http://") + HOST + "/jsonrpc";
+const NAMES_URL = params.get("api") ? params.get("api") + "/api/channels"
+  : (location.protocol === "https:" ? "https://" : "http://") + HOST.split(":")[0] + ":1790/api/channels";
+let displayNames = {};                                       // stream id -> host-chosen name
+async function refreshNames() {
+  try { const r = await fetch(NAMES_URL, { cache: "no-store" }); if (r.ok) for (const c of await r.json()) displayNames[c.id] = c.name; } catch {}
+}
 const CLIENT_ID = (() => {
   try {
     let id = localStorage.getItem("sd-client-id");
@@ -241,14 +247,14 @@ function render() {
     statusEl.textContent = `Listening · ${active}` + (player.stats.late > 20 ? " · catching up" : "");
   }
 }
-function colourFor(name) { return COLOURS[name.toLowerCase()] || "var(--grey)"; }
+function colourFor(name) { return COLOURS[name.toLowerCase()] || "var(--grey)"; }   // colour follows the stream id, not the display name
 
 async function refreshStreams() {
   try {
     const s = await serverStatus();
     const counts = {};
     for (const g of s.groups) counts[g.stream_id] = (counts[g.stream_id] || 0) + g.clients.filter(c => c.connected).length;
-    const list = s.streams.map(st => ({ id: st.id, name: (st.uri && st.uri.query && st.uri.query.name) || st.id, count: counts[st.id] || 0,
+    const list = s.streams.map(st => ({ id: st.id, name: displayNames[st.id] || (st.uri && st.uri.query && st.uri.query.name) || st.id, count: counts[st.id] || 0,
       now: (st.properties && st.properties.metadata && st.properties.metadata.title) || "" }));
     const changed = JSON.stringify(list.map(x => x.id)) !== JSON.stringify(streams.map(x => x.id));
     streams = list;
@@ -262,7 +268,7 @@ function buildTiles() {
   tilesEl.innerHTML = "";
   for (const st of streams) {
     const b = document.createElement("button");
-    b.className = "tile"; b.style.setProperty("--c", colourFor(st.name)); b.dataset.id = st.id;
+    b.className = "tile"; b.style.setProperty("--c", colourFor(st.id)); b.dataset.id = st.id;
     b.innerHTML = `<span class="dot"></span><span class="name"></span><span class="count"></span><span class="now"></span>`;
     b.addEventListener("click", () => choose(st.id));
     tilesEl.appendChild(b);
@@ -320,7 +326,7 @@ document.addEventListener("visibilitychange", () => {
   if (!player.ws || player.ws.readyState > 1) player.connect();
 });
 
-refreshStreams(); setInterval(refreshStreams, 2000);
+refreshNames().then(refreshStreams); setInterval(refreshStreams, 2000); setInterval(refreshNames, 10000);
 window.__sd = { get player() { return player; } };   // for tests
 })();
 </script>

@@ -1,0 +1,15 @@
+[Unit]
+Description=SilentDisco MPD for the %i channel
+After=network.target
+PartOf=snapserver.service
+
+[Service]
+Type=simple
+User=__SNAP_USER__
+Group=__SNAP_GROUP__
+ExecStart=/usr/bin/mpd --no-daemon /etc/silentdisco/mpd-%i.conf
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

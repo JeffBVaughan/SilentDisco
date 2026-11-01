@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1016">
+<title>Silent Disco Host</title>
+<style>
+:root{
+  --bg:#0e1016; --panel:#171a23; --panel-2:#1f2330; --ink:#f2f3f7; --ink-2:#aab0c0; --ink-3:#6f7689; --line:#2a2f3d;
+  --accent:#f2b544; --danger:#ff4d5a; --ok:#36d47a;
+  --font:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.4}
+body{padding:max(12px,env(safe-area-inset-top)) 12px max(24px,env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:8px 12px}
+button:hover{border-color:var(--ink-3)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:#0b0c10;border-color:var(--accent);font-weight:600}
+button.danger{border-color:var(--danger);color:var(--danger)}
+button.icon{width:42px;height:42px;padding:0;font-size:1.1rem;border-radius:50%}
+button:disabled{opacity:.4;cursor:default}
+header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;padding:6px 4px 14px}
+h1{margin:0;font-size:1.25rem}
+.total{font-family:var(--mono);color:var(--ink-2);font-size:.9rem}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px}
+.bar .lbl{font-size:.85rem;color:var(--ink-2);margin-right:4px}
+.bar .sw{border-color:var(--c);color:var(--c)}
+.bar .sw.on{background:var(--c);color:#0b0c10}
+select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.takeover-note{font-family:var(--mono);font-size:.8rem;color:var(--accent)}
+#grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:grid;grid-template-rows:auto auto auto auto 1fr auto}
+.card .head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--c);color:#0b0c10}
+.card .head input{background:transparent;border:0;border-bottom:1px dashed rgba(0,0,0,.35);color:inherit;font-weight:700;font-size:1.15rem;width:60%;padding:2px 0}
+.card .head .pill{font-size:.8rem;font-weight:600;background:rgba(0,0,0,.25);color:#fff;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.now{padding:12px 14px 6px}
+.now .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now .artist{color:var(--ink-2);font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.2em}
+.prog{height:4px;background:var(--line);border-radius:2px;margin:8px 0 2px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--c);width:0}
+.times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.72rem;color:var(--ink-3)}
+.ctl{display:flex;align-items:center;gap:8px;padding:6px 14px 10px;flex-wrap:wrap}
+.ctl .vol{flex:1;display:flex;align-items:center;gap:8px;min-width:140px}
+.ctl .vol input{flex:1;accent-color:var(--c)}
+.ctl .vol span{font-family:var(--mono);font-size:.75rem;color:var(--ink-3);width:3ch;text-align:right}
+.state{font-family:var(--mono);font-size:.72rem;color:var(--ink-3)}
+.state.err{color:var(--danger)}
+.queue{border-top:1px solid var(--line);max-height:200px;overflow-y:auto}
+.queue .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--line);font-size:.9rem;cursor:pointer}
+.queue .row:hover{background:var(--panel-2)}
+.queue .row.cur{color:var(--c)}
+.queue .row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.queue .row .t small{color:var(--ink-3);margin-left:6px}
+.queue .row button{padding:2px 8px;border-radius:6px;font-size:.8rem}
+.queue .empty{padding:14px;color:var(--ink-3);font-size:.9rem;text-align:center}
+.drop{margin:10px 14px 14px;border:1.5px dashed var(--line);border-radius:12px;padding:12px;text-align:center;color:var(--ink-2);font-size:.9rem;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--c);background:var(--panel-2)}
+.drop input{display:none}
+.drop .lib{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.drop .lib button{padding:5px 10px;font-size:.82rem}
+.drop .up{font-family:var(--mono);font-size:.75rem;color:var(--accent);min-height:1.2em;margin-top:6px}
+#pin{position:fixed;inset:0;background:rgba(14,16,22,.96);display:grid;place-items:center;padding:20px}
+#pin form{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:12px;width:min(340px,100%)}
+#pin input{font-size:1.4rem;letter-spacing:.3em;text-align:center;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-family:var(--mono)}
+#pin .err{color:var(--danger);font-size:.85rem;min-height:1.2em}
+.hidden{display:none !important}
+.foot{color:var(--ink-3);font-size:.8rem;text-align:center;padding-top:16px}
+.foot a{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div id="pin">
+  <form id="pinform">
+    <strong>Host PIN</strong>
+    <span style="color:var(--ink-2);font-size:.9rem">It's printed at the end of the host installer, and in /etc/default/silentdisco-host on the Pi.</span>
+    <input id="pininput" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="PIN">
+    <div class="err" id="pinerr"></div>
+    <button class="primary" type="submit">Open controls</button>
+  </form>
+</div>
+
+<header>
+  <h1>Silent Disco · Host</h1>
+  <span class="total" id="total">…</span>
+</header>
+
+<div class="bar" id="takebar">
+  <span class="lbl">Everyone to</span>
+  <span id="takebtns"></span>
+  <span class="lbl">for</span>
+  <select id="takesecs"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">1 min</option><option value="180">3 min</option><option value="600">10 min</option></select>
+  <button id="release" class="hidden">Release now</button>
+  <span class="takeover-note" id="takenote"></span>
+  <span style="flex:1"></span>
+  <button id="muteall" class="danger">Mute everyone</button>
+</div>
+
+<div id="grid"></div>
+<div class="foot">Guests join at <a id="joinlink" href="../">the join page</a> · <a href="../snapweb/">Snapweb</a></div>
+
+<script>
+(() => {
+"use strict";
+const params = new URLSearchParams(location.search);
+const API = params.get("api") || `${location.protocol}//${location.hostname}:1790`;
+let PIN = ""; try { PIN = localStorage.getItem("sd-host-pin") || ""; } catch {}
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { "X-Pin": PIN, ...(opts.body && !(opts.body instanceof Blob || opts.body instanceof File) ? { "Content-Type": "application/json" } : {}), ...(opts.headers || {}) } });
+  if (r.status === 401) { showPin("Wrong PIN"); throw new Error("pin"); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const cmd = (id, c, extra = {}) => api(`/api/channel/${encodeURIComponent(id)}/cmd`, { method: "POST", body: JSON.stringify({ cmd: c, ...extra }) }).then(poll).catch(showErr);
+
+// ------------------------------------------------------------ pin
+function showPin(msg = "") { $("#pinerr").textContent = msg; $("#pin").classList.remove("hidden"); $("#pininput").focus(); }
+$("#pinform").addEventListener("submit", async e => {
+  e.preventDefault(); PIN = $("#pininput").value.trim();
+  try { await api("/api/state"); try { localStorage.setItem("sd-host-pin", PIN); } catch {} $("#pin").classList.add("hidden"); poll(); }
+  catch (err) { if (err.message !== "pin") showPin("Can't reach the host service: " + err.message); }
+});
+
+// ------------------------------------------------------------ state
+let state = null, lastPoll = 0, editing = null, dragging = null, mutedAll = false;
+function showErr(e) { console.warn(e); $("#total").textContent = "⚠ " + e.message; }
+
+async function poll() {
+  if (!PIN) return;
+  try {
+    state = await api("/api/state"); lastPoll = performance.now();
+    render();
+  } catch (e) { if (e.message !== "pin") showErr(e); }
+}
+
+function render() {
+  if (!state) return;
+  $("#total").textContent = `${state.total} listening`;
+  // takeover bar
+  const tb = $("#takebtns");
+  if (tb.children.length !== state.channels.length) {
+    tb.innerHTML = state.channels.map(c => `<button class="sw" data-id="${esc(c.id)}" style="--c:${esc(c.colour)}">${esc(c.name)}</button>`).join(" ");
+    for (const b of tb.querySelectorAll("button")) b.addEventListener("click", () => api("/api/takeover", { method: "POST", body: JSON.stringify({ target: b.dataset.id, seconds: +$("#takesecs").value }) }).then(poll).catch(showErr));
+  }
+  for (const b of tb.querySelectorAll("button")) { const c = state.channels.find(x => x.id === b.dataset.id); if (c) b.textContent = c.name; b.classList.toggle("on", state.takeover.active && state.takeover.target === b.dataset.id); }
+  $("#release").classList.toggle("hidden", !state.takeover.active);
+  $("#takenote").textContent = state.takeover.active ? `everyone on ${state.channels.find(c => c.id === state.takeover.target)?.name || state.takeover.target} · ${Math.max(0, Math.round(state.takeover.until - state.now))} s left` : "";
+  // cards
+  const grid = $("#grid");
+  for (const c of state.channels) {
+    let card = grid.querySelector(`.card[data-id="${CSS.escape(c.id)}"]`);
+    if (!card) { card = makeCard(c); grid.appendChild(card); }
+    updateCard(card, c);
+  }
+}
+
+function makeCard(c) {
+  const card = document.createElement("article");
+  card.className = "card"; card.dataset.id = c.id; card.style.setProperty("--c", c.colour);
+  card.innerHTML = `
+    <div class="head"><input class="name" aria-label="Channel name" maxlength="24"><span class="pill"></span></div>
+    <div class="now"><div class="title">…</div><div class="artist"></div><div class="prog"><i></i></div><div class="times"><span class="el">0:00</span><span class="dur">0:00</span></div></div>
+    <div class="ctl">
+      <button class="icon prev" title="Previous">⏮</button>
+      <button class="icon playpause" title="Play / pause">▶</button>
+      <button class="icon next" title="Skip">⏭</button>
+      <button class="icon shuffle" title="Shuffle the queue">🔀</button>
+      <div class="vol"><input type="range" min="0" max="100" aria-label="Channel volume"><span class="v">–</span></div>
+      <span class="state"></span>
+    </div>
+    <div class="queue"></div>
+    <div class="drop">
+      <div>Drop songs here, or <label style="text-decoration:underline;cursor:pointer">choose files<input type="file" multiple accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg,.opus,.aac"></label></div>
+      <div class="lib"><span class="libcount" style="align-self:center;color:var(--ink-3);font-size:.82rem"></span><button class="fill">Queue the whole folder</button><button class="clear">Clear queue</button></div>
+      <div class="up"></div>
+    </div>`;
+  const id = c.id;
+  const name = $(".name", card);
+  name.addEventListener("focus", () => editing = id);
+  name.addEventListener("blur", () => { editing = null; });
+  name.addEventListener("change", () => api(`/api/channel/${encodeURIComponent(id)}/name`, { method: "POST", body: JSON.stringify({ name: name.value }) }).then(poll).catch(showErr));
+  name.addEventListener("keydown", e => { if (e.key === "Enter") name.blur(); });
+  $(".prev", card).addEventListener("click", () => cmd(id, "prev"));
+  $(".next", card).addEventListener("click", () => cmd(id, "next"));
+  $(".shuffle", card).addEventListener("click", () => cmd(id, "shuffle"));
+  $(".playpause", card).addEventListener("click", () => { const c2 = state.channels.find(x => x.id === id); cmd(id, c2 && c2.status.state === "play" ? "pause" : "play"); });
+  const vol = $(".vol input", card);
+  vol.addEventListener("input", () => { dragging = id; $(".vol .v", card).textContent = vol.value; });
+  vol.addEventListener("change", () => { dragging = null; cmd(id, "volume", { value: +vol.value }); });
+  $(".fill", card).addEventListener("click", () => cmd(id, "fill"));
+  $(".clear", card).addEventListener("click", () => { if (confirm(`Clear the ${c.name} queue?`)) cmd(id, "clear"); });
+  // uploads
+  const drop = $(".drop", card), fileIn = $("input[type=file]", card), up = $(".up", card);
+  const upload = async files => {
+    const list = [...files].filter(f => /\.(mp3|flac|m4a|wav|ogg|opus|aac|wma|aiff)$/i.test(f.name));
+    let n = 0;
+    for (const f of list) {
+      up.textContent = `uploading ${++n}/${list.length}: ${f.name}`;
+      try { await api(`/api/channel/${encodeURIComponent(id)}/files?name=${encodeURIComponent(f.name)}`, { method: "PUT", body: f }); }
+      catch (e) { up.textContent = `${f.name}: ${e.message}`; await new Promise(r => setTimeout(r, 1500)); }
+    }
+    up.textContent = list.length ? `added ${list.length} file${list.length > 1 ? "s" : ""}` : "no audio files in that drop";
+    setTimeout(() => { if (up.textContent.startsWith("added")) up.textContent = ""; }, 4000);
+    poll();
+  };
+  fileIn.addEventListener("change", () => upload(fileIn.files));
+  for (const ev of ["dragenter", "dragover"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); });
+  for (const ev of ["dragleave", "drop"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); });
+  drop.addEventListener("drop", e => upload(e.dataTransfer.files));
+  return card;
+}
+
+function updateCard(card, c) {
+  const st = c.status;
+  if (editing !== c.id) $(".name", card).value = c.name;
+  const n = c.listeners.length, pucks = c.listeners.filter(l => l.kind === "puck").length;
+  $(".pill", card).textContent = n === 0 ? "nobody" : `${n} listening${pucks ? ` · ${pucks} puck${pucks > 1 ? "s" : ""}` : ""}`;
+  $(".title", card).textContent = c.now ? c.now.title : (st.state === "down" ? "MPD not running" : "Nothing queued");
+  $(".artist", card).textContent = c.now ? c.now.artist : "";
+  $(".playpause", card).textContent = st.state === "play" ? "⏸" : "▶";
+  for (const b of card.querySelectorAll(".ctl button")) b.disabled = st.state === "down";
+  if (dragging !== c.id && st.volume >= 0) { $(".vol input", card).value = st.volume; $(".vol .v", card).textContent = st.volume; }
+  const se = $(".state", card);
+  se.textContent = c.error ? c.error.slice(0, 60) : (st.updating ? "indexing…" : `${st.queue_len} queued · ${c.library_count} in folder${st.random ? " · random" : ""}`);
+  se.classList.toggle("err", !!c.error);
+  $(".libcount", card).textContent = "";
+  // queue
+  const q = $(".queue", card);
+  const curId = c.now ? c.now.id : null;
+  const html = c.queue.length ? c.queue.slice(0, 60).map(s => `<div class="row${s.id === curId ? " cur" : ""}" data-id="${s.id}"><span class="t">${esc(s.title)}${s.artist ? `<small>${esc(s.artist)}</small>` : ""}</span><button class="rm" title="Remove">✕</button></div>`).join("") + (c.queue.length > 60 ? `<div class="empty">and ${c.queue.length - 60} more</div>` : "") : `<div class="empty">Queue is empty. Drop songs below or queue the folder.</div>`;
+  if (q.dataset.html !== html) {
+    q.innerHTML = html; q.dataset.html = html;
+    for (const row of q.querySelectorAll(".row")) {
+      row.addEventListener("click", () => cmd(c.id, "jump", { id: +row.dataset.id }));
+      $(".rm", row).addEventListener("click", e => { e.stopPropagation(); cmd(c.id, "remove", { id: +row.dataset.id }); });
+    }
+  }
+  card._prog = c.now ? { elapsed: st.elapsed, duration: c.now.duration, playing: st.state === "play", at: lastPoll } : null;
+}
+
+// progress bars tick between polls
+setInterval(() => {
+  for (const card of document.querySelectorAll(".card")) {
+    const p = card._prog; if (!p) { $(".prog i", card).style.width = "0"; continue; }
+    const el = p.elapsed + (p.playing ? (performance.now() - p.at) / 1000 : 0);
+    $(".prog i", card).style.width = p.duration ? `${Math.min(100, el / p.duration * 100)}%` : "0";
+    $(".el", card).textContent = fmt(el); $(".dur", card).textContent = fmt(p.duration);
+  }
+}, 500);
+
+$("#release").addEventListener("click", () => api("/api/release", { method: "POST", body: "{}" }).then(poll).catch(showErr));
+$("#muteall").addEventListener("click", () => { mutedAll = !mutedAll; $("#muteall").textContent = mutedAll ? "Unmute everyone" : "Mute everyone"; $("#muteall").classList.toggle("primary", mutedAll); api("/api/mute", { method: "POST", body: JSON.stringify({ muted: mutedAll }) }).catch(showErr); });
+$("#joinlink").href = `${location.protocol}//${location.host}/`;
+
+if (PIN) { $("#pin").classList.add("hidden"); poll(); } else showPin();
+setInterval(poll, 2000);
+})();
+</script>
+</body>
+</html>

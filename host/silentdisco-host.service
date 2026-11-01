@@ -1,0 +1,16 @@
+[Unit]
+Description=SilentDisco host API (party controls)
+After=snapserver.service
+Wants=snapserver.service
+
+[Service]
+Type=simple
+User=__SNAP_USER__
+Group=__SNAP_GROUP__
+EnvironmentFile=-/etc/default/silentdisco-host
+ExecStart=/usr/bin/python3 /usr/local/lib/silentdisco/host.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -30,7 +30,7 @@ Testing locally without a Pi:
 snapserver -c /path/to/test.conf   # two pipe streams, codec = pcm, doc_root = web/party
 ```
 
-## Planned
+## host/ — the host's controls
 
-- `host/`: per-channel controls for whoever runs the party (now playing,
-  skip, queue, upload, rename, "everyone to Red"), backed by MPD per channel.
+Served at `/host/`, PIN protected, talks to the host API on port 1790. See
+[host/README.md](../host/README.md).
