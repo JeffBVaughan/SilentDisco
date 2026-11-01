@@ -137,13 +137,16 @@ class Clock {
     this.est = ds[Math.floor(ds.length / 2)];
     if (this.diff === null) this.diff = this.est;
   }
-  tick() {                                   // called per chunk: move at most 0.5 ms toward the estimate
+  tick(locked) {
+    // Called per chunk. Before playback is anchored (or right after a hard resync) the offset
+    // may jump straight to the estimate; once audio is flowing it moves at most 0.2 ms per
+    // chunk (10 ms/s), which the scheduler's trim/pad correction can follow without jumps.
     if (this.est === null || this.diff === null) return;
     const d = this.est - this.diff;
-    this.diff += Math.sign(d) * Math.min(Math.abs(d), 0.5);
+    this.diff += locked ? Math.sign(d) * Math.min(Math.abs(d), 0.2) : d;
   }
   serverToClient(ms) { return ms - (this.diff ?? 0); }
-  ready() { return this.diff !== null; }
+  ready() { return this.diff !== null && this.samples.length >= 6; }   // wait for the opening burst
 }
 
 // ------------------------------------------------------------ player
@@ -184,7 +187,7 @@ class Player {
     ws.onopen = () => {
       ws.send(helloMsg());
       this.timeTimer = setInterval(() => { if (ws.readyState === 1) ws.send(timeMsg()); }, 1000);
-      for (let i = 0; i < 5; i++) setTimeout(() => ws.readyState === 1 && ws.send(timeMsg()), 50 * i);
+      for (let i = 0; i < 12; i++) setTimeout(() => ws.readyState === 1 && ws.send(timeMsg()), 60 * i);   // opening burst
     };
     ws.onmessage = (ev) => this.onMessage(ev.data);
     ws.onclose = () => { clearInterval(this.timeTimer); this.anchored = false; if (this.ws === ws) this.ws = null; if (!this.stopped) { this.onStatus("Reconnecting…"); setTimeout(() => this.connect(), 1500); } };
@@ -282,7 +285,7 @@ class Player {
   schedule(planes, frames, ts) {
     const ctx = this.ctx;
     if (!this.clock.ready()) return;
-    this.clock.tick();
+    this.clock.tick(this.anchored);
     // when should the first sample of this chunk hit the ear, in audio-context seconds?
     const playClientMs = this.clock.serverToClient(ts + this.bufferMs - this.latencyMs + userSync);   // userSync > 0 plays later
     const outLat = ctx.outputLatency || ctx.baseLatency || 0;
@@ -291,6 +294,7 @@ class Player {
     let err = this.anchored ? target - this.nextStart : Infinity;   // + : we are running early, pad
     if (!this.anchored || Math.abs(err) > 0.1) {                      // way off: hard re-anchor
       if (target < ctx.currentTime + 0.002) { this.stats.late++; return; }
+      this.clock.tick(false);                                           // take the estimate as-is at a resync
       this.nextStart = target; this.anchored = true; err = 0; this.stats.anchors++;
     }
     // gentle correction: trim or pad up to 1 % of the chunk (about 10 ms per second of audio)
