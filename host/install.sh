@@ -29,6 +29,8 @@ for i in "${!colours[@]}"; do
   sed -e "s#__BASE__#$base#g" -e "s#__COLOUR__#$c#g" -e "s#__PORT__#$port#g" \
     "$here/mpd.conf.template" > "/etc/silentdisco/mpd-$c.conf"
 done
+# install -d only chowns the leaf; make the whole tree the mpd user's
+chown -R "$SNAP_USER:$SNAP_GROUP" "$base/mpd" "$base/music"
 chmod -R g+w "$base/music"
 # the FIFO must be owned by the mpd user; recreate ours if it exists with the wrong owner
 install -d -o "$SNAP_USER" -g "$SNAP_GROUP" "$base/fifo"
