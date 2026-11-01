@@ -149,6 +149,7 @@ class Player {
   }
   connect() {
     if (this.stopped) return;
+    if (this.ws && this.ws.readyState <= 1) return;        // already connecting or open
     this.onStatus("Connecting…");
     const ws = new WebSocket(WS_URL); ws.binaryType = "arraybuffer"; this.ws = ws;
     ws.onopen = () => {
@@ -157,7 +158,7 @@ class Player {
       for (let i = 0; i < 5; i++) setTimeout(() => ws.readyState === 1 && ws.send(timeMsg()), 50 * i);
     };
     ws.onmessage = (ev) => this.onMessage(ev.data);
-    ws.onclose = () => { clearInterval(this.timeTimer); this.anchored = false; if (!this.stopped) { this.onStatus("Reconnecting…"); setTimeout(() => this.connect(), 1500); } };
+    ws.onclose = () => { clearInterval(this.timeTimer); this.anchored = false; if (this.ws === ws) this.ws = null; if (!this.stopped) { this.onStatus("Reconnecting…"); setTimeout(() => this.connect(), 1500); } };
     ws.onerror = () => {};
   }
   stop() {
@@ -278,34 +279,46 @@ function updateTiles() {
     b.setAttribute("aria-pressed", String(st.id === active));
   }
 }
+let groupId = null, chooseSeq = 0, startPromise = null;
 async function myGroupId() {
-  for (let i = 0; i < 10; i++) {
+  if (groupId) return groupId;
+  for (let i = 0; i < 20; i++) {
     const s = await serverStatus();
-    for (const g of s.groups) if (g.clients.some(c => c.id === CLIENT_ID)) return g.id;
-    await new Promise(r => setTimeout(r, 300));
+    for (const g of s.groups) if (g.clients.some(c => c.id === CLIENT_ID)) return (groupId = g.id);
+    await new Promise(r => setTimeout(r, 250));
   }
   throw new Error("client not registered");
 }
 async function choose(id) {
+  if (id === active && player && !player.stopped) return;      // already on it
+  const seq = ++chooseSeq;
   active = id; updateTiles(); stopEl.disabled = false;
   if (!player) player = new Player(setStatus);
   try {
-    await player.start();
+    if (!startPromise) startPromise = player.start().catch(e => { startPromise = null; throw e; });
+    await startPromise;
     const gid = await myGroupId();
-    await rpc("Group.SetStream", { id: gid, stream_id: id });
+    if (seq !== chooseSeq) return;                                // a newer tap took over
+    try { await rpc("Group.SetStream", { id: gid, stream_id: id }); }
+    catch (e) { groupId = null; const g2 = await myGroupId(); if (seq !== chooseSeq) return; await rpc("Group.SetStream", { id: g2, stream_id: id }); }
+    if (seq !== chooseSeq) return;
     if ("mediaSession" in navigator) {
       const st = streams.find(x => x.id === id);
       navigator.mediaSession.metadata = new MediaMetadata({ title: st ? st.name : id, artist: "Silent Disco" });
       navigator.mediaSession.setActionHandler("pause", () => stopAll());
-      navigator.mediaSession.setActionHandler("play", () => choose(active));
+      navigator.mediaSession.setActionHandler("play", () => { const a = active; active = null; choose(a); });
     }
-  } catch (e) { setStatus("Could not join: " + e.message); }
+  } catch (e) { if (seq === chooseSeq) setStatus("Could not join: " + e.message); }
   refreshStreams();
 }
-function stopAll() { if (player) player.stop(); active = null; stopEl.disabled = true; updateTiles(); render(); }
+function stopAll() { if (player) player.stop(); startPromise = null; active = null; stopEl.disabled = true; updateTiles(); render(); }
 stopEl.addEventListener("click", stopAll);
 volEl.addEventListener("input", () => { userVolume = volEl.value / 100; try { localStorage.setItem("sd-vol", volEl.value); } catch {} if (player) player.applyGain(); });
-document.addEventListener("visibilitychange", () => { if (!document.hidden && player && !player.stopped && player.ws && player.ws.readyState > 1) player.connect(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !player || player.stopped) return;
+  if (player.ctx && player.ctx.state !== "running") player.ctx.resume().catch(() => {});
+  if (!player.ws || player.ws.readyState > 1) player.connect();
+});
 
 refreshStreams(); setInterval(refreshStreams, 2000);
 window.__sd = { get player() { return player; } };   // for tests
