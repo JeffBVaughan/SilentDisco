@@ -15,6 +15,7 @@ JSON-RPC in a small HTTP API the host page talks to:
   POST /api/takeover                     {"target": "<id>", "seconds": 30}
   POST /api/release
   POST /api/mute                         {"muted": true|false}
+  POST /api/pin                          {"old": "...", "new": "..."}  4 to 8 digits
 
 Every call except /api/channels needs the PIN (header X-Pin or ?pin=).
 Standard library only.
@@ -32,7 +33,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE      = os.environ.get("HOST_BASE", "/var/lib/silentdisco")
 PORT      = int(os.environ.get("HOST_PORT", "1790"))
-PIN       = os.environ.get("HOST_PIN", "0000")
+PIN_FILE  = os.path.join(BASE, "pin")
+def load_pin():
+    try:
+        with open(PIN_FILE) as f:
+            v = f.read().strip()
+            if v: return v
+    except Exception: pass
+    return os.environ.get("HOST_PIN", "0000")
+PIN       = load_pin()
 SNAP_RPC  = os.environ.get("HOST_SNAP_RPC", "http://127.0.0.1:1780/jsonrpc")
 MPD_BASE_PORT = int(os.environ.get("HOST_MPD_BASE_PORT", "6600"))
 CHANNELS  = [c for c in os.environ.get("HOST_CHANNELS", "Yellow,Red,Green,Blue").split(",") if c]
@@ -267,6 +276,19 @@ class Handler(BaseHTTPRequestHandler):
                 release(); return self._send(200, {"ok": True})
             if parts == ["api", "mute"]:
                 mute_all(bool(body.get("muted"))); return self._send(200, {"ok": True})
+            if parts == ["api", "pin"]:
+                global PIN
+                old, new = str(body.get("old", "")), str(body.get("new", ""))
+                if old != PIN: return self._send(403, {"error": "current PIN is wrong"})
+                if not re.fullmatch(r"\d{4,8}", new): return self._send(400, {"error": "new PIN must be 4 to 8 digits"})
+                try:
+                    tmp = PIN_FILE + ".tmp"
+                    with open(tmp, "w") as f: f.write(new + "\n")
+                    os.chmod(tmp, 0o600); os.replace(tmp, PIN_FILE)
+                except Exception as e:
+                    return self._send(500, {"error": f"could not save the PIN: {e}"})
+                PIN = new; log("PIN changed")
+                return self._send(200, {"ok": True})
             if len(parts) == 4 and parts[:2] == ["api", "channel"]:
                 c = channel(parts[2])
                 if not c: return self._send(404, {"error": "no such channel"})

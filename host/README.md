@@ -39,8 +39,10 @@ After the server installer:
 cd ~/SilentDisco/host && sudo ./install.sh
 ```
 
-Prints the PIN. It lives in `/etc/default/silentdisco-host`; change it and
-restart `silentdisco-host`.
+Prints the PIN. Change it from the host page ("Change PIN" in the footer:
+current, new, confirm). It is stored in `/var/lib/silentdisco/pin`; if you
+ever lose it, read or overwrite that file on the Pi and restart
+`silentdisco-host`.
 
 ## Operating
 
@@ -73,3 +75,4 @@ header.
 | `POST /api/takeover` | `{"target": "<id>", "seconds": 30}` |
 | `POST /api/release` | |
 | `POST /api/mute` | `{"muted": true}` |
+| `POST /api/pin` | `{"old": "1234", "new": "5678"}`, 4 to 8 digits |

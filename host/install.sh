@@ -47,16 +47,22 @@ install -d /usr/local/lib/silentdisco
 install -m 755 "$here/host.py" /usr/local/lib/silentdisco/host.py
 sed -e "s/__SNAP_USER__/$SNAP_USER/g" -e "s/__SNAP_GROUP__/$SNAP_GROUP/g" \
   "$here/silentdisco-host.service" > /etc/systemd/system/silentdisco-host.service
+# The PIN lives in $base/pin, owned by the service so the host page can change it.
+if [[ ! -s "$base/pin" ]]; then
+  # migrate a PIN from an earlier install, else make one
+  pin="$(grep -E '^HOST_PIN=' /etc/default/silentdisco-host 2>/dev/null | cut -d= -f2 || true)"
+  [[ -n "$pin" ]] || pin="$(shuf -i 1000-9999 -n 1)"
+  echo "$pin" > "$base/pin"
+fi
+chown "$SNAP_USER:$SNAP_GROUP" "$base/pin"; chmod 600 "$base/pin"
 if [[ ! -f /etc/default/silentdisco-host ]]; then
-  pin="$(shuf -i 1000-9999 -n 1)"
   cat > /etc/default/silentdisco-host <<ENV
-# Host page PIN. Change it any time, then: sudo systemctl restart silentdisco-host
-HOST_PIN=$pin
+# Settings for the host API. The PIN is in $base/pin (change it from the host page).
 #HOST_PORT=1790
 #HOST_CHANNELS=Yellow,Red,Green,Blue
 ENV
-  chmod 640 /etc/default/silentdisco-host; chgrp "$SNAP_GROUP" /etc/default/silentdisco-host
 fi
+sed -i '/^HOST_PIN=/d' /etc/default/silentdisco-host
 # the host page itself is served by snapserver next to the join page
 www=$base/www
 if [[ -d $www ]]; then
@@ -71,7 +77,7 @@ systemctl restart silentdisco-host
 sleep 1
 systemctl restart snapserver
 
-pin="$(grep -E '^HOST_PIN=' /etc/default/silentdisco-host | cut -d= -f2)"
+pin="$(cat "$base/pin")"
 ip="$(hostname -I | awk '{print $1}')"
 echo
 echo "================================================================"

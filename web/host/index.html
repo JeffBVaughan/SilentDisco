@@ -109,7 +109,18 @@ select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px
 </div>
 
 <div id="grid"></div>
-<div class="foot">Guests join at <a id="joinlink" href="../">the join page</a> · <a href="../snapweb/">Snapweb</a></div>
+<div class="foot">Guests join at <a id="joinlink" href="../">the join page</a> · <a href="../snapweb/">Snapweb</a> · <a href="#" id="changepin">Change PIN</a></div>
+
+<div id="pindlg" class="hidden" style="position:fixed;inset:0;background:rgba(14,16,22,.9);display:grid;place-items:center;padding:20px">
+  <form id="pinchange" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:10px;width:min(340px,100%)">
+    <strong>Change the host PIN</strong>
+    <label style="font-size:.85rem;color:var(--ink-2)">Current PIN<input id="pin_old" inputmode="numeric" autocomplete="off" maxlength="8" style="display:block;width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-family:var(--mono);letter-spacing:.2em"></label>
+    <label style="font-size:.85rem;color:var(--ink-2)">New PIN (4 to 8 digits)<input id="pin_new" inputmode="numeric" autocomplete="off" maxlength="8" style="display:block;width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-family:var(--mono);letter-spacing:.2em"></label>
+    <label style="font-size:.85rem;color:var(--ink-2)">Confirm new PIN<input id="pin_new2" inputmode="numeric" autocomplete="off" maxlength="8" style="display:block;width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);font-family:var(--mono);letter-spacing:.2em"></label>
+    <div id="pinchange_msg" style="font-size:.85rem;min-height:1.2em;color:var(--danger)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="pinchange_cancel">Cancel</button><button type="submit" class="primary">Save</button></div>
+  </form>
+</div>
 
 <script>
 (() => {
@@ -293,6 +304,24 @@ setInterval(() => {
 $("#release").addEventListener("click", () => api("/api/release", { method: "POST", body: "{}" }).then(poll).catch(showErr));
 $("#muteall").addEventListener("click", () => { mutedAll = !mutedAll; $("#muteall").textContent = mutedAll ? "Unmute everyone" : "Mute everyone"; $("#muteall").classList.toggle("primary", mutedAll); api("/api/mute", { method: "POST", body: JSON.stringify({ muted: mutedAll }) }).catch(showErr); });
 $("#joinlink").href = `${location.protocol}//${location.host}/`;
+
+// ------------------------------------------------------------ change pin
+const pindlg = $("#pindlg"), pinmsg = $("#pinchange_msg");
+$("#changepin").addEventListener("click", e => { e.preventDefault(); pinmsg.textContent = ""; for (const id of ["pin_old", "pin_new", "pin_new2"]) $("#" + id).value = ""; pindlg.classList.remove("hidden"); $("#pin_old").focus(); });
+$("#pinchange_cancel").addEventListener("click", () => pindlg.classList.add("hidden"));
+$("#pinchange").addEventListener("submit", async e => {
+  e.preventDefault();
+  const o = $("#pin_old").value.trim(), n = $("#pin_new").value.trim(), n2 = $("#pin_new2").value.trim();
+  if (!/^\d{4,8}$/.test(n)) { pinmsg.textContent = "The new PIN must be 4 to 8 digits."; return; }
+  if (n !== n2) { pinmsg.textContent = "The two new PINs don't match."; return; }
+  if (o !== PIN) { pinmsg.textContent = "That's not the current PIN."; return; }
+  try {
+    await api("/api/pin", { method: "POST", body: JSON.stringify({ old: o, new: n }) });
+    PIN = n; try { localStorage.setItem("sd-host-pin", PIN); } catch {}
+    pinmsg.style.color = "var(--ok)"; pinmsg.textContent = "PIN changed.";
+    setTimeout(() => { pindlg.classList.add("hidden"); pinmsg.style.color = "var(--danger)"; }, 900);
+  } catch (err) { pinmsg.textContent = err.message === "pin" ? "That's not the current PIN." : err.message; }
+});
 
 if (PIN) { $("#pin").classList.add("hidden"); poll(); } else showPin();
 setInterval(poll, 2000);
