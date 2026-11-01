@@ -72,6 +72,14 @@ else
   rm -rf "$tmp"
   snapweb_is_real "$DOC_ROOT" && echo "   Snapweb ${ver} installed at $DOC_ROOT"
 fi
+SNAPWEB_DIR="$DOC_ROOT"
+
+# The join page (web/party) is what the QR points at; Snapweb stays at /snapweb/
+WWW=/var/lib/silentdisco/www
+install -d "$WWW"
+install -m 644 "$here/../../web/party/index.html" "$WWW/index.html"
+ln -sfn "$SNAPWEB_DIR" "$WWW/snapweb"
+DOC_ROOT="$WWW"
 
 # The service user differs by package: upstream .deb uses "snapserver",
 # Debian/Raspberry Pi OS use "_snapserver". Ask systemd, then fall back.
@@ -122,6 +130,7 @@ echo
 echo "================================================================"
 echo " SilentDisco server is up."
 echo "   Join page:   http://${ip}:1780/   (or http://silentdisco.local:1780/)"
+echo "   Host panel:  http://${ip}:1780/snapweb/"
 echo "   Music goes in: /var/lib/silentdisco/music/{yellow,red,green,blue}/"
 echo "   Logs:        journalctl -fu snapserver -u 'silentdisco-channel@*'"
 echo "================================================================"

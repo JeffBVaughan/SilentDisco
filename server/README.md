@@ -95,13 +95,17 @@ Open the URL the installer printed, `http://<pi-ip>:1780/`, or scan the QR.
 `http://silentdisco.local:1780/` works on iPhones and Macs; Android is hit
 and miss with `.local` names, so put the IP on the QR.
 
-In Snapweb, tap **Play in browser**. Your phone appears as a client in its
-own group. The dropdown on the group picks the stream: Yellow, Red, Green or
-Blue. Screen off is fine on both iOS and Android once audio is playing,
-though iOS will stop it if you fully close the tab.
+The page is the join page from `web/party/`: four colour tiles with a live
+listener count on each. Tap a colour and it plays. Tap another to switch.
+The volume slider is local to the phone. Screen off is fine on Android; on
+iOS keep the tab open (the lock-screen player controls work).
+
+Snapweb, the full control panel, is still there at
+`http://<pi-ip>:1780/snapweb/` for the host: mute or move any listener,
+set volumes, see everything connected.
 
 Android users can also install the **Snapcast** app from the Play Store and
-point it at the Pi; it is more robust than the browser for long sessions.
+point it at the Pi; it is the most robust client for long sessions.
 
 Reprint the QR any time:
 
@@ -176,7 +180,6 @@ All of it is a few dollars.
 
 1. `pucks/`: ESP32 firmware (Snapcast ESP32 client first, custom later),
    wiring, printed shell.
-2. `web/`: a one-screen join page with four big colour buttons instead of
-   Snapweb's control panel, built on Snapweb's player code.
-3. `box/`: the ESP8266 + rings + OLED front panel for the server.
-4. Access-point mode so the box carries its own Wi-Fi to parks and cabins.
+2. A host page: per-channel now playing, skip, queue, uploads, and an
+   "everyone to one colour" button, with MPD under each channel.
+3. Access-point mode so the box carries its own Wi-Fi to parks and cabins.
