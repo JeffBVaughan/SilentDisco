@@ -28,7 +28,8 @@ h1{margin:0;font-size:1.2rem;font-weight:700;letter-spacing:.02em}
 .tile.active .dot{position:absolute;top:12px;right:14px;width:12px;height:12px;border-radius:50%;background:#fff;animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 @media (prefers-reduced-motion:reduce){.tile.active .dot{animation:none}}
-footer{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+footer{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+#syncval{font-size:.8rem;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:5ch;text-align:right}
 footer label{font-size:.8rem;color:var(--ink-2)}
 input[type=range]{width:100%;accent-color:var(--ink)}
 #stop{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.85rem;padding:8px 12px;border-radius:10px;cursor:pointer}
@@ -48,6 +49,9 @@ audio{display:none}
   <label for="vol">Volume</label>
   <input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume">
   <button id="stop" disabled>Stop</button>
+  <label for="sync">Sync</label>
+  <input id="sync" type="range" min="-300" max="300" step="5" value="0" aria-label="Sync adjustment in milliseconds">
+  <span id="syncval">0 ms</span>
 </footer>
 <div id="help">Use wired earbuds for perfect sync. Bluetooth adds a little delay. <a href="host/">Host page</a></div>
 <audio id="keepalive" playsinline></audio>
@@ -280,7 +284,7 @@ class Player {
     if (!this.clock.ready()) return;
     this.clock.tick();
     // when should the first sample of this chunk hit the ear, in audio-context seconds?
-    const playClientMs = this.clock.serverToClient(ts + this.bufferMs - this.latencyMs);
+    const playClientMs = this.clock.serverToClient(ts + this.bufferMs - this.latencyMs + userSync);   // userSync > 0 plays later
     const outLat = ctx.outputLatency || ctx.baseLatency || 0;
     const target = ctx.currentTime + (playClientMs - nowMs()) / 1000 - outLat;
     const rate = this.sampleRate;
@@ -310,7 +314,11 @@ class Player {
 // ------------------------------------------------------------ ui
 const tilesEl = document.getElementById("tiles"), statusEl = document.getElementById("status");
 const volEl = document.getElementById("vol"), stopEl = document.getElementById("stop");
-let userVolume = 0.8, active = null, streams = [], player = null, statusText = "";
+let userVolume = 0.8, userSync = 0, active = null, streams = [], player = null, statusText = "";
+const syncEl = document.getElementById("sync"), syncVal = document.getElementById("syncval");
+try { userSync = parseInt(localStorage.getItem("sd-sync") || "0", 10) || 0; } catch {}
+syncEl.value = userSync; syncVal.textContent = `${userSync > 0 ? "+" : ""}${userSync} ms`;
+syncEl.addEventListener("input", () => { userSync = +syncEl.value; syncVal.textContent = `${userSync > 0 ? "+" : ""}${userSync} ms`; try { localStorage.setItem("sd-sync", String(userSync)); } catch {} });
 try { userVolume = (parseInt(localStorage.getItem("sd-vol") || "80", 10)) / 100; volEl.value = Math.round(userVolume * 100); } catch {}
 
 function setStatus(s) { statusText = s; render(); }
@@ -322,7 +330,7 @@ function render() {
   }
   if (DEBUG && player && player.ctx) {
     const st = player.stats, c = player.clock;
-    statusEl.textContent += ` · ${player.codec || "?"} ${player.ctx.sampleRate}Hz · err ${st.err}ms · late ${st.late} · anchors ${st.anchors} · rtt ${c.samples.length ? Math.round(Math.min(...c.samples.map(x => x.rtt))) : "?"}ms`;
+    statusEl.textContent += ` · ${player.codec || "?"} ${player.ctx.sampleRate}Hz · err ${st.err}ms · late ${st.late} · anchors ${st.anchors} · rtt ${c.samples.length ? Math.round(Math.min(...c.samples.map(x => x.rtt))) : "?"}ms · outlat ${Math.round(((player.ctx.outputLatency || player.ctx.baseLatency || 0)) * 1000)}ms`;
   }
 }
 if (DEBUG) setInterval(render, 1000);
