@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Switch the box between joining a Wi-Fi network and being one.
+#
+#   silentdisco-ap on        become the hotspot (drops the house Wi-Fi on wlan0)
+#   silentdisco-ap off       back to the saved Wi-Fi network
+#   silentdisco-ap status    one line: ap|client, ssid, address
+#   silentdisco-ap boot on|off   whether the box comes up as a hotspot after a reboot
+#   silentdisco-ap set ssid|pass|band|channel VALUE
+#   silentdisco-ap apply     (re)create the NetworkManager profile from /etc/silentdisco/ap.conf
+#
+# Uses NetworkManager (Raspberry Pi OS Bookworm and newer). Ethernet is untouched:
+# with a cable in, the box stays reachable on the LAN in either mode.
+set -euo pipefail
+CONF=/etc/silentdisco/ap.conf
+CON=silentdisco-ap
+IFACE=${AP_IFACE:-wlan0}
+
+load() { [[ -f $CONF ]] || { echo "no $CONF; run ap/install.sh" >&2; exit 1; }; . "$CONF"; }
+need_root() { [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }; }
+
+apply() {
+  need_root; load
+  nmcli -t -f NAME con show | grep -qx "$CON" && nmcli con delete "$CON" >/dev/null
+  nmcli con add type wifi ifname "$IFACE" con-name "$CON" autoconnect no ssid "$AP_SSID" -- \
+    802-11-wireless.mode ap 802-11-wireless.band "${AP_BAND:-bg}" 802-11-wireless.channel "${AP_CHANNEL:-6}" \
+    802-11-wireless.powersave 2 \
+    ipv4.method shared ipv4.addresses "${AP_IP:-10.42.0.1}/24" ipv6.method disabled \
+    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$AP_PASS" wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp >/dev/null
+  # DNS for hotspot clients: every name resolves to the box, so any http site lands on the join page
+  if [[ "${AP_CAPTIVE:-1}" == "1" ]]; then
+    install -d /etc/NetworkManager/dnsmasq-shared.d
+    printf 'address=/#/%s\n' "${AP_IP:-10.42.0.1}" > /etc/NetworkManager/dnsmasq-shared.d/silentdisco.conf
+  else
+    rm -f /etc/NetworkManager/dnsmasq-shared.d/silentdisco.conf
+  fi
+  boot "${AP_AT_BOOT:-off}" quiet
+  echo "profile '$CON' ready: ssid '$AP_SSID', ${AP_IP:-10.42.0.1}, band ${AP_BAND:-bg} ch ${AP_CHANNEL:-6}"
+}
+
+is_ap() { nmcli -t -f NAME,DEVICE con show --active 2>/dev/null | grep -q "^$CON:"; }
+
+status() {
+  load
+  if is_ap; then echo "ap ssid=$AP_SSID ip=${AP_IP:-10.42.0.1} boot=$(nmcli -g connection.autoconnect con show "$CON" 2>/dev/null)"
+  else
+    ssid="$(nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')"
+    ip="$(ip -4 -o addr show "$IFACE" 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)"
+    echo "client ssid=${ssid:-none} ip=${ip:-none}"
+  fi
+}
+
+on()  { need_root; load; nmcli -t -f NAME con show | grep -qx "$CON" || apply >/dev/null; nmcli con up "$CON" >/dev/null && echo "hotspot '$AP_SSID' up at ${AP_IP:-10.42.0.1}"; }
+off() { need_root; load; is_ap && nmcli con down "$CON" >/dev/null; echo "hotspot down; rejoining saved Wi-Fi"; }
+
+boot() {
+  need_root; load
+  case "${1:-}" in
+    on)  nmcli con modify "$CON" connection.autoconnect yes connection.autoconnect-priority 50 ;;
+    off) nmcli con modify "$CON" connection.autoconnect no ;;
+    *) echo "boot on|off" >&2; exit 1 ;;
+  esac
+  sed -i "s/^AP_AT_BOOT=.*/AP_AT_BOOT=$1/" "$CONF"
+  [[ "${2:-}" == quiet ]] || echo "hotspot at boot: $1"
+}
+
+set_() {
+  need_root; load
+  key="${1:-}"; val="${2:-}"
+  case "$key" in
+    ssid) [[ ${#val} -ge 1 && ${#val} -le 32 ]] || { echo "ssid: 1 to 32 characters" >&2; exit 1; }; sed -i "s|^AP_SSID=.*|AP_SSID=\"$val\"|" "$CONF" ;;
+    pass) [[ ${#val} -ge 8 && ${#val} -le 63 ]] || { echo "pass: 8 to 63 characters" >&2; exit 1; }; sed -i "s|^AP_PASS=.*|AP_PASS=\"$val\"|" "$CONF" ;;
+    band) [[ $val == bg || $val == a ]] || { echo "band: bg (2.4 GHz) or a (5 GHz, Pi 4/5 only)" >&2; exit 1; }; sed -i "s|^AP_BAND=.*|AP_BAND=$val|" "$CONF" ;;
+    channel) sed -i "s|^AP_CHANNEL=.*|AP_CHANNEL=$val|" "$CONF" ;;
+    *) echo "set ssid|pass|band|channel VALUE" >&2; exit 1 ;;
+  esac
+  was_up=0; is_ap && was_up=1
+  apply >/dev/null
+  [[ $was_up == 1 ]] && nmcli con up "$CON" >/dev/null
+  echo "$key updated"
+}
+
+case "${1:-}" in
+  on) on ;; off) off ;; status) status ;; apply) apply ;; boot) boot "${2:-}" ;; set) set_ "${2:-}" "${3:-}" ;;
+  *) sed -n '2,12p' "$0"; exit 1 ;;
+esac

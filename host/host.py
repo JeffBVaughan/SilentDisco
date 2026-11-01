@@ -16,6 +16,8 @@ JSON-RPC in a small HTTP API the host page talks to:
   POST /api/release
   POST /api/mute                         {"muted": true|false}
   POST /api/pin                          {"old": "...", "new": "..."}  4 to 8 digits
+  GET  /api/wifi                         mode (ap|client), ssid, password, address, boot setting
+  POST /api/wifi                         {"mode": "ap"|"client"} or {"boot": "on"|"off"}
 
 Every call except /api/channels needs the PIN (header X-Pin or ?pin=).
 Standard library only.
@@ -214,6 +216,42 @@ def mute_all(muted):
         try: snap("Group.SetMute", {"id": g["id"], "mute": bool(muted)})
         except Exception as e: log("mute:", e)
 
+# ---------------------------------------------------------------- wifi (hotspot mode)
+AP_CMD   = os.environ.get("HOST_AP_CMD", "/usr/local/sbin/silentdisco-ap")
+AP_CONF  = os.environ.get("HOST_AP_CONF", "/etc/silentdisco/ap.conf")
+
+def ap_conf():
+    d = {}
+    try:
+        with open(AP_CONF) as f:
+            for line in f:
+                line = line.split("#", 1)[0].strip()
+                if "=" in line:
+                    k, v = line.split("=", 1); d[k.strip()] = v.strip().strip('"')
+    except Exception: pass
+    return d
+
+def ap_run(*args, timeout=25):
+    import subprocess
+    cmd = ["sudo", "-n", AP_CMD, *args] if os.geteuid() != 0 else [AP_CMD, *args]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    if r.returncode != 0: raise RuntimeError((r.stderr or r.stdout or "failed").strip()[:200])
+    return r.stdout.strip()
+
+def wifi_state():
+    conf = ap_conf()
+    if not os.path.exists(AP_CMD):
+        return {"available": False, "mode": "client", "ssid": None, "password": None, "address": None, "boot": "off"}
+    try:
+        st = ap_run("status", timeout=8)
+    except Exception as e:
+        return {"available": True, "mode": "unknown", "error": str(e), "ssid": conf.get("AP_SSID"), "password": conf.get("AP_PASS"), "boot": conf.get("AP_AT_BOOT", "off")}
+    kv = dict(x.split("=", 1) for x in st.split()[1:] if "=" in x)
+    mode = st.split()[0] if st else "unknown"
+    return {"available": True, "mode": mode, "ssid": kv.get("ssid"), "address": kv.get("ip"),
+            "hotspot_ssid": conf.get("AP_SSID"), "password": conf.get("AP_PASS"), "boot": conf.get("AP_AT_BOOT", "off"),
+            "join_url": f"http://{conf.get('AP_IP', '10.42.0.1')}:1780/"}
+
 # ---------------------------------------------------------------- http
 class Handler(BaseHTTPRequestHandler):
     server_version = "silentdisco-host/0.1"
@@ -258,6 +296,8 @@ class Handler(BaseHTTPRequestHandler):
                 chans.append(d)
             return self._send(200, {"channels": chans, "total": sum(len(v) for v in per.values()),
                                     "takeover": {k: _takeover[k] for k in ("active", "target", "until")}, "now": time.time()})
+        if parts == ["api", "wifi"]:
+            return self._send(200, wifi_state())
         if len(parts) == 4 and parts[:2] == ["api", "channel"] and parts[3] == "library":
             c = channel(parts[2])
             return self._send(200, library(c)) if c else self._send(404, {"error": "no such channel"})
@@ -277,6 +317,16 @@ class Handler(BaseHTTPRequestHandler):
                 release(); return self._send(200, {"ok": True})
             if parts == ["api", "mute"]:
                 mute_all(bool(body.get("muted"))); return self._send(200, {"ok": True})
+            if parts == ["api", "wifi"]:
+                if "boot" in body:
+                    ap_run("boot", "on" if body["boot"] in (True, "on") else "off")
+                elif body.get("mode") == "ap":
+                    threading.Timer(0.5, lambda: ap_run("on")).start()        # reply first: the caller's link may drop
+                elif body.get("mode") == "client":
+                    threading.Timer(0.5, lambda: ap_run("off")).start()
+                else:
+                    return self._send(400, {"error": "mode ap|client or boot on|off"})
+                return self._send(200, {"ok": True})
             if parts == ["api", "pin"]:
                 global PIN
                 old, new = str(body.get("old", "")), str(body.get("new", ""))

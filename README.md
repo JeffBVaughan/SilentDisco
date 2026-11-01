@@ -8,6 +8,7 @@ and a channel button for anyone with wired headphones.
 - [server/](server/README.md): Raspberry Pi + Snapcast setup. **Start here.**
 - [web/](web/README.md): the join page guests see.
 - [host/](host/README.md): MPD per channel and the host's controls page.
+- [ap/](ap/README.md): hotspot mode, the box as its own Wi-Fi.
 - [box/](box/README.md): LED ring + OLED face for the server box, wiring and service.
 - [hardware/](hardware/README.md): OpenSCAD models for the Halo puck and Dial box.
 - [pucks/PARTS.md](pucks/PARTS.md): parts list.

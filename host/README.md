@@ -76,3 +76,5 @@ header.
 | `POST /api/release` | |
 | `POST /api/mute` | `{"muted": true}` |
 | `POST /api/pin` | `{"old": "1234", "new": "5678"}`, 4 to 8 digits |
+| `GET /api/wifi` | mode, ssid, hotspot password, address, boot setting |
+| `POST /api/wifi` | `{"mode": "ap"}` / `{"mode": "client"}` / `{"boot": "on"}` |

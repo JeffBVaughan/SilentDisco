@@ -62,6 +62,24 @@ def snap_status():
     return counts
 
 
+AP_CONF = os.environ.get("FACE_AP_CONF", "/etc/silentdisco/ap.conf")
+def hotspot():
+    """(ssid, password, ip) if the box is currently running its own hotspot, else None."""
+    try:
+        conf = {}
+        with open(AP_CONF) as f:
+            for line in f:
+                line = line.split("#", 1)[0].strip()
+                if "=" in line:
+                    k, v = line.split("=", 1); conf[k.strip()] = v.strip().strip('"')
+        ip = conf.get("AP_IP", "10.42.0.1")
+        out = subprocess.check_output(["ip", "-4", "-o", "addr", "show"], text=True)
+        if f" {ip}/" in out:
+            return conf.get("AP_SSID", "SilentDisco"), conf.get("AP_PASS", ""), ip
+    except Exception:
+        pass
+    return None
+
 def join_url():
     try:
         ip = subprocess.check_output(["hostname", "-I"], text=True).split()[0]
@@ -131,6 +149,20 @@ def make_qr(url):
     return img
 
 
+def wifi_qr_text(ssid, password):
+    esc = lambda v: v.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace(":", "\\:")
+    return f"WIFI:T:WPA;S:{esc(ssid)};P:{esc(password)};;"
+
+def draw_wifi_frame(d, qr, ssid, password, fonts):
+    big, small = fonts
+    d.bitmap((0, (64 - qr.height) // 2), qr, fill="white")
+    x = qr.width + 2
+    d.text((x, 0), "JOIN WI-FI", font=big, fill="white")
+    d.text((x, 14), ssid[:12], font=small, fill="white")
+    d.text((x, 26), "password:", font=small, fill="white")
+    d.text((x, 38), password[:12], font=small, fill="white")
+    d.text((x, 52), "then scan", font=small, fill="white")
+
 def draw_frame(d, counts, url, qr, fonts):
     """Draw one 128x64 frame onto an ImageDraw. Shared by the device and the dry run."""
     big, small = fonts
@@ -156,10 +188,18 @@ class Oled:
         self.qr = None
         self.qr_url = None
 
-    def show(self, counts, url):
+    def show(self, counts, url, ap=None):
         from luma.core.render import canvas
         if url != self.qr_url:
             self.qr, self.qr_url = make_qr(url), url
+        # in hotspot mode alternate: 6 s of "join this Wi-Fi" QR, 6 s of the join-page QR
+        if ap and int(time.monotonic() / 6) % 2 == 0:
+            key = (ap[0], ap[1])
+            if getattr(self, "wifi_key", None) != key:
+                self.wifi_qr, self.wifi_key = make_qr(wifi_qr_text(ap[0], ap[1])), key
+            with canvas(self.dev) as d:
+                draw_wifi_frame(d, self.wifi_qr, ap[0], ap[1], self.fonts)
+            return
         with canvas(self.dev) as d:
             draw_frame(d, counts, url, self.qr, self.fonts)
 
@@ -203,6 +243,7 @@ def main():
     signal.signal(signal.SIGINT, stop)
 
     url = join_url()
+    ap = hotspot()
     last_url_check = time.monotonic()
     counts = {name: 0 for name, _ in CHANNELS}
     while running:
@@ -211,8 +252,9 @@ def main():
             counts = snap_status()
         except Exception as e:
             print(f"snapserver unreachable: {e}", file=sys.stderr)
-        if t - last_url_check > 30:              # DHCP can move us
+        if t - last_url_check > 30:              # DHCP can move us, and the hotspot can come and go
             url, last_url_check = join_url(), t
+            ap = hotspot()
         if args.dry_run and args.frame:
             try:
                 from PIL import Image, ImageDraw
@@ -229,7 +271,7 @@ def main():
             try: ring.show(counts, t)
             except Exception as e: print(f"ring: {e}", file=sys.stderr)
         if oled:
-            try: oled.show(counts, url)
+            try: oled.show(counts, url, ap)
             except Exception as e: print(f"oled: {e}", file=sys.stderr)
         time.sleep(POLL_S if not (ring and any(v > PIXELS_PER_CH for v in counts.values())) else 0.1)
 

@@ -1,0 +1,16 @@
+[Unit]
+Description=SilentDisco hotspot portal (answers internet probes, redirects to the join page)
+After=network.target
+
+[Service]
+Type=simple
+User=__SNAP_USER__
+Group=__SNAP_GROUP__
+EnvironmentFile=-/etc/silentdisco/portal.env
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=/usr/bin/python3 /usr/local/lib/silentdisco/portal.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

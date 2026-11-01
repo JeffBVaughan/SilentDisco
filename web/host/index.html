@@ -108,6 +108,14 @@ select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px
   <button id="muteall" class="danger">Mute everyone</button>
 </div>
 
+<div class="bar" id="wifibar">
+  <span class="lbl">Wi-Fi</span>
+  <span id="wifistate" style="font-family:var(--mono);font-size:.85rem">…</span>
+  <span style="flex:1"></span>
+  <label class="lbl" for="wifiboot">hotspot at boot</label><input type="checkbox" id="wifiboot">
+  <button id="wifitoggle">…</button>
+</div>
+
 <div id="grid"></div>
 <div class="foot">Guests join at <a id="joinlink" href="../">the join page</a> · <a href="../snapweb/">Snapweb</a> · <a href="#" id="changepin">Change PIN</a></div>
 
@@ -145,7 +153,7 @@ const cmd = (id, c, extra = {}) => api(`/api/channel/${encodeURIComponent(id)}/c
 function showPin(msg = "") { $("#pinerr").textContent = msg; $("#pin").classList.remove("hidden"); $("#pininput").focus(); }
 $("#pinform").addEventListener("submit", async e => {
   e.preventDefault(); PIN = $("#pininput").value.trim();
-  try { await api("/api/state"); try { localStorage.setItem("sd-host-pin", PIN); } catch {} $("#pin").classList.add("hidden"); poll(); }
+  try { await api("/api/state"); try { localStorage.setItem("sd-host-pin", PIN); } catch {} $("#pin").classList.add("hidden"); poll(); pollWifi(); }
   catch (err) { if (err.message !== "pin") showPin("Can't reach the host service: " + err.message); }
 });
 
@@ -301,6 +309,37 @@ setInterval(() => {
   }
 }, 500);
 
+// ------------------------------------------------------------ wifi / hotspot
+let wifi = null;
+async function pollWifi() {
+  if (!PIN) return;
+  try { wifi = await api("/api/wifi"); } catch (e) { return; }
+  const bar = $("#wifibar");
+  if (!wifi.available) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  const st = $("#wifistate"), tg = $("#wifitoggle");
+  if (wifi.mode === "ap") {
+    st.textContent = `hotspot "${wifi.ssid}" · password ${wifi.password} · box at ${wifi.join_url}`;
+    tg.textContent = "Switch to home Wi-Fi"; tg.classList.remove("primary");
+  } else if (wifi.mode === "client") {
+    st.textContent = `on network "${wifi.ssid || "?"}" · ${wifi.address || ""} · hotspot "${wifi.hotspot_ssid}" is off`;
+    tg.textContent = "Switch to hotspot"; tg.classList.add("primary");
+  } else { st.textContent = wifi.error || "unknown"; tg.textContent = "Retry"; }
+  $("#wifiboot").checked = wifi.boot === "on";
+}
+$("#wifitoggle").addEventListener("click", async () => {
+  if (!wifi) return;
+  const toAp = wifi.mode !== "ap";
+  const msg = toAp
+    ? `Switch the box to hotspot mode?\n\nIt leaves "${wifi.ssid || "the current Wi-Fi"}". To reach it again, join the Wi-Fi "${wifi.hotspot_ssid}" (password ${wifi.password}) and open ${wifi.join_url}host/\n\nEthernet, if plugged in, keeps working.`
+    : `Switch the box back to the saved home Wi-Fi?\n\nThe hotspot "${wifi.ssid}" goes away and this page will need to be opened at the box's home address.`;
+  if (!confirm(msg)) return;
+  try { await api("/api/wifi", { method: "POST", body: JSON.stringify({ mode: toAp ? "ap" : "client" }) }); $("#wifistate").textContent = "switching… reconnect in about 20 s"; }
+  catch (e) { showErr(e); }
+});
+$("#wifiboot").addEventListener("change", () => api("/api/wifi", { method: "POST", body: JSON.stringify({ boot: $("#wifiboot").checked ? "on" : "off" }) }).then(pollWifi).catch(showErr));
+setInterval(pollWifi, 5000);
+
 $("#release").addEventListener("click", () => api("/api/release", { method: "POST", body: "{}" }).then(poll).catch(showErr));
 $("#muteall").addEventListener("click", () => { mutedAll = !mutedAll; $("#muteall").textContent = mutedAll ? "Unmute everyone" : "Mute everyone"; $("#muteall").classList.toggle("primary", mutedAll); api("/api/mute", { method: "POST", body: JSON.stringify({ muted: mutedAll }) }).catch(showErr); });
 $("#joinlink").href = `${location.protocol}//${location.host}/`;
@@ -323,7 +362,7 @@ $("#pinchange").addEventListener("submit", async e => {
   } catch (err) { pinmsg.textContent = err.message === "pin" ? "That's not the current PIN." : err.message; }
 });
 
-if (PIN) { $("#pin").classList.add("hidden"); poll(); } else showPin();
+if (PIN) { $("#pin").classList.add("hidden"); poll(); pollWifi(); } else showPin();
 setInterval(poll, 2000);
 })();
 </script>
