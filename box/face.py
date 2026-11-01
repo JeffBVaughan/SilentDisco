@@ -29,15 +29,16 @@ LED_COUNT  = int(os.environ.get("FACE_LED_COUNT", "16"))
 LED_BRIGHT = int(os.environ.get("FACE_LED_BRIGHT", "96"))  # 0..255, keeps the 5 V rail happy
 LED_OFFSET = int(os.environ.get("FACE_LED_OFFSET", "0"))   # rotate so Yellow sits top-right
 OLED_ADDR  = int(os.environ.get("FACE_OLED_ADDR", "0x3C"), 16)
+DIM        = float(os.environ.get("FACE_DIM", "0.06"))   # idle glow as a fraction of full colour
+PURE       = os.environ.get("FACE_PURE", "1") == "1"     # 1: saturated primaries, 0: softer mixes
 
 # channel name (as in snapserver.conf) -> colour, in the order they go round the ring
 CHANNELS = [
-    ("Yellow", (255, 190, 0)),
-    ("Red",    (255, 30, 40)),
-    ("Green",  (30, 220, 90)),
-    ("Blue",   (40, 130, 255)),
+    ("Yellow", (255, 150, 0)   if PURE else (255, 190, 0)),
+    ("Red",    (255, 0, 4)     if PURE else (255, 30, 40)),
+    ("Green",  (0, 255, 20)    if PURE else (30, 220, 90)),
+    ("Blue",   (0, 60, 255)    if PURE else (40, 130, 255)),
 ]
-DIM = 0.08          # idle glow as a fraction of full colour
 PIXELS_PER_CH = LED_COUNT // len(CHANNELS)
 
 

@@ -33,6 +33,8 @@ install -m 644 "$here/silentdisco-face.service" /etc/systemd/system/
 #FACE_LED_BRIGHT=96
 #FACE_LED_OFFSET=0
 #FACE_OLED_ADDR=0x3C
+#FACE_DIM=0.06        # idle glow, 0.02 faint .. 0.15 strong
+#FACE_PURE=1          # 1 saturated primaries, 0 softer mixes
 ENV
 systemctl daemon-reload
 systemctl enable silentdisco-face
