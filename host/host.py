@@ -33,7 +33,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE      = os.environ.get("HOST_BASE", "/var/lib/silentdisco")
 PORT      = int(os.environ.get("HOST_PORT", "1790"))
-PIN_FILE  = os.path.join(BASE, "pin")
+STATE_DIR = os.path.join(BASE, "host")        # owned by the service user; the PIN and names live here
+PIN_FILE  = os.path.join(STATE_DIR, "pin")
 def load_pin():
     try:
         with open(PIN_FILE) as f:
@@ -46,7 +47,7 @@ SNAP_RPC  = os.environ.get("HOST_SNAP_RPC", "http://127.0.0.1:1780/jsonrpc")
 MPD_BASE_PORT = int(os.environ.get("HOST_MPD_BASE_PORT", "6600"))
 CHANNELS  = [c for c in os.environ.get("HOST_CHANNELS", "Yellow,Red,Green,Blue").split(",") if c]
 COLOURS   = {"yellow": "#ffc928", "red": "#ff4d5a", "green": "#36d47a", "blue": "#4a9dff"}
-NAMES_FILE = os.path.join(BASE, "channels.json")
+NAMES_FILE = os.path.join(STATE_DIR, "channels.json")
 AUDIO_EXT = (".mp3", ".flac", ".m4a", ".wav", ".ogg", ".opus", ".aac", ".wma", ".aiff")
 
 def log(*a): print(*a, file=sys.stderr, flush=True)
@@ -375,7 +376,7 @@ def keeper():
         time.sleep(60)
 
 def main():
-    os.makedirs(BASE, exist_ok=True)
+    os.makedirs(STATE_DIR, exist_ok=True)
     threading.Thread(target=keeper, daemon=True).start()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     log(f"host api on :{PORT}, channels {CHANNELS}, pin {'set' if PIN != '0000' else 'DEFAULT 0000'}")

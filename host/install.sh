@@ -47,14 +47,18 @@ install -d /usr/local/lib/silentdisco
 install -m 755 "$here/host.py" /usr/local/lib/silentdisco/host.py
 sed -e "s/__SNAP_USER__/$SNAP_USER/g" -e "s/__SNAP_GROUP__/$SNAP_GROUP/g" \
   "$here/silentdisco-host.service" > /etc/systemd/system/silentdisco-host.service
-# The PIN lives in $base/pin, owned by the service so the host page can change it.
-if [[ ! -s "$base/pin" ]]; then
+# The service's own state dir: the PIN and channel names, writable from the host page.
+state="$base/host"
+install -d -o "$SNAP_USER" -g "$SNAP_GROUP" -m 750 "$state"
+[[ -f "$base/pin" && ! -f "$state/pin" ]] && mv "$base/pin" "$state/pin"
+[[ -f "$base/channels.json" && ! -f "$state/channels.json" ]] && mv "$base/channels.json" "$state/channels.json"
+if [[ ! -s "$state/pin" ]]; then
   # migrate a PIN from an earlier install, else make one
   pin="$(grep -E '^HOST_PIN=' /etc/default/silentdisco-host 2>/dev/null | cut -d= -f2 || true)"
   [[ -n "$pin" ]] || pin="$(shuf -i 1000-9999 -n 1)"
-  echo "$pin" > "$base/pin"
+  echo "$pin" > "$state/pin"
 fi
-chown "$SNAP_USER:$SNAP_GROUP" "$base/pin"; chmod 600 "$base/pin"
+chown -R "$SNAP_USER:$SNAP_GROUP" "$state"; chmod 600 "$state/pin"
 if [[ ! -f /etc/default/silentdisco-host ]]; then
   cat > /etc/default/silentdisco-host <<ENV
 # Settings for the host API. The PIN is in $base/pin (change it from the host page).
@@ -77,7 +81,7 @@ systemctl restart silentdisco-host
 sleep 1
 systemctl restart snapserver
 
-pin="$(cat "$base/pin")"
+pin="$(cat "$base/host/pin")"
 ip="$(hostname -I | awk '{print $1}')"
 echo
 echo "================================================================"
