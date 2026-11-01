@@ -23,7 +23,7 @@ USB power for the bench. No battery needed to prove sync and the LED.
 |---|---|---|---|---|
 | 1 | Seeed XIAO ESP32-S3 | 1 | $7.50 | Tiny, USB-C, LiPo charger on board, battery pads on the back |
 | 2 | PCM5102A DAC module | 1 | $4 | Line-level out drives earbuds directly. Its on-board jack is not used; the version without a jack is fine |
-| 2b | Panel-mount 3.5 mm stereo jack, M6 thread | 1 | $0.60 | Mounts in the shell wall, wired to the DAC's L/R/GND pads. Cable yanks pull on the shell, not the PCB |
+| 2b | Panel-mount 3.5 mm stereo jack, pre-wired (Lsgoodcare PJ30920-D, M6 thread, Ø 8 × 11.8 mm body) | 1 | $2 | Mounts in the shell wall, wires to the DAC's L/R/GND pads. The Halo model is drawn around this exact jack |
 | 3 | 3.7 V 1000 mAh LiPo, JST-PH 2.0 lead | 1 | $5 | 6 to 8 h; the 053450 cell you have is this size |
 | 4 | WS2812 16-pixel ring (44.5 mm OD) | 1 | $4 | The Halo shell is built around this ring; you have one for the first puck |
 | 5 | 12 × 12 × 7.3 mm tactile switch | 1 | $0.30 | Under the printed Ø 28 cap |
@@ -67,7 +67,7 @@ some batches ship with the bridges already made.
 
 ```
 PCM5102A        XIAO ESP32-S3
-  VIN  ───────── 3V3
+  VIN  ───────── BAT+ (3.7 to 4.2 V; the module has its own 3.3 V regulator, so give it headroom)
   GND  ───────── GND
   SCK  ───────── GND
   BCK  ───────── D8  (I2S bit clock)

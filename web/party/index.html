@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1016">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Silent Disco</title>
+<style>
+:root{
+  --bg:#0e1016; --panel:#171a23; --ink:#f2f3f7; --ink-2:#aab0c0; --line:#2a2f3d;
+  --yellow:#ffc928; --red:#ff4d5a; --green:#36d47a; --blue:#4a9dff; --grey:#6b7280;
+  --font:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--font)}
+body{display:flex;flex-direction:column;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));gap:10px}
+header{display:flex;align-items:baseline;justify-content:space-between;padding:4px 6px}
+h1{margin:0;font-size:1.2rem;font-weight:700;letter-spacing:.02em}
+#status{font-size:.85rem;color:var(--ink-2);text-align:right}
+#tiles{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px;min-height:0}
+.tile{position:relative;border:0;border-radius:18px;background:var(--c);color:#0b0c10;font:inherit;font-weight:700;font-size:clamp(1.3rem,6vw,2.2rem);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:.55;transform:scale(.97);transition:opacity .2s,transform .2s,box-shadow .2s;padding:12px;overflow:hidden}
+.tile:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.tile.active{opacity:1;transform:scale(1);box-shadow:0 0 0 4px var(--bg),0 0 0 7px var(--c),0 0 40px var(--c)}
+.tile .count{font-size:.85rem;font-weight:600;background:rgba(0,0,0,.28);color:#fff;padding:3px 10px;border-radius:999px}
+.tile .now{font-size:.75rem;font-weight:500;color:rgba(0,0,0,.7);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.active .dot{position:absolute;top:12px;right:14px;width:12px;height:12px;border-radius:50%;background:#fff;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){.tile.active .dot{animation:none}}
+footer{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+#syncval{font-size:.8rem;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:5ch;text-align:right}
+footer label{font-size:.8rem;color:var(--ink-2)}
+input[type=range]{width:100%;accent-color:var(--ink)}
+#stop{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.85rem;padding:8px 12px;border-radius:10px;cursor:pointer}
+#stop:disabled{opacity:.4}
+#help{font-size:.8rem;color:var(--ink-2);text-align:center;padding:0 10px}
+#help a{color:var(--ink-2)}
+audio{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Silent Disco</h1>
+  <div id="status">Tap a colour to listen</div>
+</header>
+<div id="tiles" role="group" aria-label="Channels"></div>
+<footer>
+  <label for="vol">Volume</label>
+  <input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume">
+  <button id="stop" disabled>Stop</button>
+  <label for="sync">Sync</label>
+  <input id="sync" type="range" min="-300" max="300" step="5" value="0" aria-label="Sync adjustment in milliseconds">
+  <span id="syncval">0 ms</span>
+</footer>
+<div id="help">Use wired earbuds for perfect sync. Bluetooth adds a little delay. <a href="host/">Host page</a></div>
+<audio id="keepalive" playsinline></audio>
+<script src="opus-decoder.min.js"></script>
+
+<script>
+(() => {
+"use strict";
+// ------------------------------------------------------------ settings
+const COLOURS = { yellow:"var(--yellow)", red:"var(--red)", green:"var(--green)", blue:"var(--blue)" };
+const params = new URLSearchParams(location.search);
+const HOST = params.get("host") || location.host;           // ?host=pi:1780 for testing
+const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + HOST + "/stream";
+const RPC_URL = (location.protocol === "https:" ? "https://" : "http://") + HOST + "/jsonrpc";
+const NAMES_URL = params.get("api") ? params.get("api") + "/api/channels"
+  : (location.protocol === "https:" ? "https://" : "http://") + HOST.split(":")[0] + ":1790/api/channels";
+let displayNames = {};                                       // stream id -> host-chosen name
+async function refreshNames() {
+  try { const r = await fetch(NAMES_URL, { cache: "no-store" }); if (r.ok) for (const c of await r.json()) displayNames[c.id] = c.name; } catch {}
+}
+const CLIENT_ID = (() => {
+  try {
+    let id = localStorage.getItem("sd-client-id");
+    if (!id) { id = "web-" + Math.random().toString(36).slice(2, 10); localStorage.setItem("sd-client-id", id); }
+    return id;
+  } catch { return "web-" + Math.random().toString(36).slice(2, 10); }
+})();
+
+// ------------------------------------------------------------ json-rpc
+let rpcId = 1;
+async function rpc(method, params) {
+  const r = await fetch(RPC_URL, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: rpcId++, jsonrpc: "2.0", method, params }) });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || "rpc error");
+  return j.result;
+}
+async function serverStatus() { return (await rpc("Server.GetStatus")).server; }
+
+// ------------------------------------------------------------ snapcast wire protocol
+// Base header: u16 type, u16 id, u16 refersTo, tv sent(i32 s, i32 us), tv received, u32 size. 26 bytes, LE.
+const T = { CODEC_HEADER: 1, WIRE_CHUNK: 2, SERVER_SETTINGS: 3, TIME: 4, HELLO: 5, STREAM_TAGS: 6, CLIENT_INFO: 7 };
+const nowMs = () => performance.timeOrigin + performance.now();
+function tvWrite(dv, off, ms) {
+  const s = Math.floor(ms / 1000); dv.setInt32(off, s, true); dv.setInt32(off + 4, Math.round((ms - s * 1000) * 1000), true);
+}
+function tvRead(dv, off) { return dv.getInt32(off, true) * 1000 + dv.getInt32(off + 4, true) / 1000; }
+let msgId = 0;
+function encode(type, payload) {
+  const buf = new ArrayBuffer(26 + payload.byteLength);
+  const dv = new DataView(buf);
+  dv.setUint16(0, type, true); dv.setUint16(2, ++msgId & 0xffff, true); dv.setUint16(4, 0, true);
+  tvWrite(dv, 6, nowMs()); tvWrite(dv, 14, 0); dv.setUint32(22, payload.byteLength, true);
+  new Uint8Array(buf, 26).set(new Uint8Array(payload));
+  return buf;
+}
+function jsonPayload(obj) {
+  const s = new TextEncoder().encode(JSON.stringify(obj));
+  const buf = new ArrayBuffer(4 + s.byteLength);
+  new DataView(buf).setUint32(0, s.byteLength, true);
+  new Uint8Array(buf, 4).set(s);
+  return buf;
+}
+function helloMsg() {
+  return encode(T.HELLO, jsonPayload({
+    Arch: "web", ClientName: "SilentDisco", HostName: "phone", ID: CLIENT_ID, Instance: 1,
+    MAC: "00:00:00:00:00:00", OS: navigator.userAgent.slice(0, 40), SnapStreamProtocolVersion: 2, Version: "0.1.0",
+  }));
+}
+function timeMsg() { const p = new ArrayBuffer(8); tvWrite(new DataView(p), 0, 0); return encode(T.TIME, p); }
+
+// ------------------------------------------------------------ clock: server - client offset
+class Clock {
+  // server-minus-client offset. Wi-Fi on a phone has jittery, lopsided round trips, so
+  // rather than a plain median we trust the samples with the shortest round trip (NTP-style)
+  // and slew the applied offset toward the estimate instead of jumping.
+  constructor() { this.samples = []; this.est = null; this.diff = null; }
+  update(c2s, s2c) {
+    this.samples.push({ diff: (c2s - s2c) / 2, rtt: c2s + s2c, t: performance.now() });
+    if (this.samples.length > 60) this.samples.shift();
+    const best = [...this.samples].sort((a, b) => a.rtt - b.rtt).slice(0, Math.max(3, Math.ceil(this.samples.length / 4)));
+    const ds = best.map(x => x.diff).sort((a, b) => a - b);
+    this.est = ds[Math.floor(ds.length / 2)];
+    if (this.diff === null) this.diff = this.est;
+  }
+  tick(locked) {
+    // Called per chunk. Before playback is anchored (or right after a hard resync) the offset
+    // may jump straight to the estimate; once audio is flowing it moves at most 0.2 ms per
+    // chunk (10 ms/s), which the scheduler's trim/pad correction can follow without jumps.
+    if (this.est === null || this.diff === null) return;
+    const d = this.est - this.diff;
+    this.diff += locked ? Math.sign(d) * Math.min(Math.abs(d), 0.2) : d;
+  }
+  serverToClient(ms) { return ms - (this.diff ?? 0); }
+  ready() { return this.diff !== null && this.samples.length >= 6; }   // wait for the opening burst
+}
+
+// ------------------------------------------------------------ player
+class Player {
+  constructor(onStatus) {
+    this.onStatus = onStatus; this.ws = null; this.ctx = null; this.gain = null;
+    this.clock = new Clock(); this.bufferMs = 1000; this.latencyMs = 0; this.volume = 1; this.muted = false;
+    this.sampleRate = 48000; this.channels = 2; this.bits = 16; this.codec = null; this.decoder = null; this.decoderReady = false;
+    this.nextStart = 0; this.anchored = false; this.lastSync = 0; this.timeTimer = null;
+    this.stats = { late: 0, played: 0, err: 0, anchors: 0 };
+    this.stopped = true;
+  }
+  async start() {
+    this.stopped = false;
+    if (!this.ctx) this.openContext(this.sampleRate);
+    if (this.ctx.state !== "running") await this.ctx.resume();
+    this.connect();
+  }
+  openContext(rate) {
+    // Pin the context to the stream's rate so chunks are not resampled one by one
+    // (per-chunk resampling crackles at every seam on 44.1 kHz phones).
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx;
+    try { ctx = new AC({ latencyHint: "playback", sampleRate: rate }); } catch { ctx = new AC({ latencyHint: "playback" }); }
+    this.ctx = ctx;
+    this.gain = ctx.createGain(); this.gain.gain.value = userVolume;
+    const dest = ctx.createMediaStreamDestination();
+    this.gain.connect(dest);
+    const el = document.getElementById("keepalive");
+    el.srcObject = dest.stream; el.play().catch(() => {});
+    this.anchored = false;
+  }
+  connect() {
+    if (this.stopped) return;
+    if (this.ws && this.ws.readyState <= 1) return;        // already connecting or open
+    this.onStatus("Connecting…");
+    const ws = new WebSocket(WS_URL); ws.binaryType = "arraybuffer"; this.ws = ws;
+    ws.onopen = () => {
+      ws.send(helloMsg());
+      this.timeTimer = setInterval(() => { if (ws.readyState === 1) ws.send(timeMsg()); }, 1000);
+      for (let i = 0; i < 12; i++) setTimeout(() => ws.readyState === 1 && ws.send(timeMsg()), 60 * i);   // opening burst
+    };
+    ws.onmessage = (ev) => this.onMessage(ev.data);
+    ws.onclose = () => { clearInterval(this.timeTimer); this.anchored = false; if (this.ws === ws) this.ws = null; if (!this.stopped) { this.onStatus("Reconnecting…"); setTimeout(() => this.connect(), 1500); } };
+    ws.onerror = () => {};
+  }
+  stop() {
+    this.stopped = true; clearInterval(this.timeTimer);
+    if (this.ws) { this.ws.onclose = null; this.ws.close(); this.ws = null; }
+    this.closeDecoder(); this.anchored = false; this.onStatus("Stopped");
+  }
+  onMessage(buf) {
+    const dv = new DataView(buf);
+    const type = dv.getUint16(0, true), sent = tvRead(dv, 6), size = dv.getUint32(22, true);
+    const body = new DataView(buf, 26, size);
+    switch (type) {
+      case T.TIME: {
+        const c2s = tvRead(body, 0);                 // server: its receive time - our send time
+        const s2c = nowMs() - sent;                  // us: our receive time - server send time
+        this.clock.update(c2s, s2c);
+        break;
+      }
+      case T.SERVER_SETTINGS: {
+        const j = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 30, body.getUint32(0, true))));
+        this.bufferMs = j.bufferMs ?? 1000; this.latencyMs = j.latency ?? 0;
+        this.volume = (j.volume ?? 100) / 100; this.muted = !!j.muted; this.applyGain();
+        break;
+      }
+      case T.CODEC_HEADER: {
+        const codecLen = body.getUint32(0, true);
+        this.codec = new TextDecoder().decode(new Uint8Array(buf, 30, codecLen));
+        const payLen = body.getUint32(4 + codecLen, true);
+        const pay = new DataView(buf, 30 + codecLen + 4, payLen);
+        this.closeDecoder();
+        if (this.codec === "pcm" && payLen >= 44) {           // WAV header
+          this.channels = pay.getUint16(22, true); this.sampleRate = pay.getUint32(24, true); this.bits = pay.getUint16(34, true);
+          this.onStatus("Listening");
+        } else if (this.codec === "opus" && payLen >= 12) {   // "OPUS" marker, u32 rate, u16 bits, u16 channels
+          this.sampleRate = pay.getUint32(4, true); this.bits = pay.getUint16(8, true); this.channels = pay.getUint16(10, true);
+          if (!window["opus-decoder"]) { this.onStatus("Opus decoder failed to load; reload the page"); break; }
+          this.openDecoder();
+          this.onStatus("Listening");
+        } else {
+          this.onStatus(`Server codec "${this.codec}" not supported here`);
+        }
+        if (this.ctx && this.ctx.sampleRate !== this.sampleRate) {
+          try { this.ctx.close(); } catch {}
+          this.openContext(this.sampleRate);
+          this.ctx.resume().catch(() => {});
+        }
+        this.anchored = false;                                 // new stream: resync
+        break;
+      }
+      case T.WIRE_CHUNK:
+        if (this.codec === "pcm") this.onPcmChunk(buf, body);
+        else if (this.codec === "opus" && this.decoder) this.onOpusChunk(buf, body);
+        break;
+      default: break;
+    }
+  }
+  // ---- decoding: both paths end in schedule(planarFloat32[], frames, serverTsMs)
+  onPcmChunk(buf, body) {
+    const ts = tvRead(body, 0), n = body.getUint32(8, true);
+    const bytesPer = this.bits / 8, frames = n / (bytesPer * this.channels);
+    if (!frames) return;
+    const src16 = new Int16Array(buf, body.byteOffset + 12, frames * this.channels);
+    const planes = [];
+    for (let c = 0; c < this.channels; c++) {
+      const out = new Float32Array(frames);
+      for (let i = 0, j = c; i < frames; i++, j += this.channels) out[i] = src16[j] / 32768;
+      planes.push(out);
+    }
+    this.schedule(planes, frames, ts);
+  }
+  openDecoder() {
+    // libopus compiled to WebAssembly, decoding on the main thread: ~0.2 ms per 20 ms packet.
+    // (The browser's own AudioDecoder would do, but it only exists on HTTPS pages.)
+    const { OpusDecoder } = window["opus-decoder"];
+    const dec = new OpusDecoder({ sampleRate: this.sampleRate, channels: this.channels, forceStereo: this.channels === 1 });
+    this.decoder = dec; this.decoderReady = false;
+    dec.ready.then(() => { if (this.decoder === dec) this.decoderReady = true; })
+             .catch(e => { console.warn("opus init", e); this.onStatus("Opus decoder failed to start"); });
+  }
+  closeDecoder() { if (this.decoder) { try { this.decoder.free(); } catch {} this.decoder = null; this.decoderReady = false; } }
+  onOpusChunk(buf, body) {
+    const ts = tvRead(body, 0), n = body.getUint32(8, true);
+    if (!n || !this.decoderReady) return;
+    let out;
+    try { out = this.decoder.decodeFrame(new Uint8Array(buf, body.byteOffset + 12, n)); }
+    catch (e) { this.stats.late++; return; }
+    if (!out || !out.samplesDecoded) return;
+    if (out.sampleRate !== this.sampleRate) this.sampleRate = out.sampleRate;
+    this.schedule(out.channelData, out.samplesDecoded, ts);
+  }
+  // ---- scheduling on the audio clock
+  schedule(planes, frames, ts) {
+    const ctx = this.ctx;
+    if (!this.clock.ready()) return;
+    this.clock.tick(this.anchored);
+    // when should the first sample of this chunk hit the ear, in audio-context seconds?
+    const playClientMs = this.clock.serverToClient(ts + this.bufferMs - this.latencyMs + userSync);   // userSync > 0 plays later
+    const outLat = ctx.outputLatency || ctx.baseLatency || 0;
+    const target = ctx.currentTime + (playClientMs - nowMs()) / 1000 - outLat;
+    const rate = this.sampleRate;
+    let err = this.anchored ? target - this.nextStart : Infinity;   // + : we are running early, pad
+    if (!this.anchored || Math.abs(err) > 0.1) {                      // way off: hard re-anchor
+      if (target < ctx.currentTime + 0.002) { this.stats.late++; return; }
+      this.clock.tick(false);                                           // take the estimate as-is at a resync
+      this.nextStart = target; this.anchored = true; err = 0; this.stats.anchors++;
+    }
+    // gentle correction: trim or pad up to 1 % of the chunk (about 10 ms per second of audio)
+    const maxAdj = Math.max(1, Math.round(frames * 0.01));
+    const adj = Math.max(-maxAdj, Math.min(maxAdj, Math.round(err * rate)));
+    const outFrames = frames + adj;
+    if (outFrames <= 0) { this.stats.late++; return; }
+    const ab = ctx.createBuffer(planes.length, outFrames, rate);
+    for (let c = 0; c < planes.length; c++) {
+      const src = planes[c], dst = ab.getChannelData(c);
+      if (adj >= 0) { dst.set(src); if (adj) dst.fill(src[frames - 1] || 0, frames); }   // pad by holding the last sample
+      else dst.set(src.subarray(0, outFrames));                                            // trim the tail
+    }
+    const node = ctx.createBufferSource(); node.buffer = ab; node.connect(this.gain);
+    node.start(this.nextStart); this.nextStart += outFrames / rate; this.stats.played++;
+    this.stats.err = Math.round(err * 1000);
+  }
+  applyGain() { if (this.gain) this.gain.gain.value = this.muted ? 0 : this.volume * userVolume; }
+}
+
+// ------------------------------------------------------------ ui
+const tilesEl = document.getElementById("tiles"), statusEl = document.getElementById("status");
+const volEl = document.getElementById("vol"), stopEl = document.getElementById("stop");
+let userVolume = 0.8, userSync = 0, active = null, streams = [], player = null, statusText = "";
+const syncEl = document.getElementById("sync"), syncVal = document.getElementById("syncval");
+try { userSync = parseInt(localStorage.getItem("sd-sync") || "0", 10) || 0; } catch {}
+syncEl.value = userSync; syncVal.textContent = `${userSync > 0 ? "+" : ""}${userSync} ms`;
+syncEl.addEventListener("input", () => { userSync = +syncEl.value; syncVal.textContent = `${userSync > 0 ? "+" : ""}${userSync} ms`; try { localStorage.setItem("sd-sync", String(userSync)); } catch {} });
+try { userVolume = (parseInt(localStorage.getItem("sd-vol") || "80", 10)) / 100; volEl.value = Math.round(userVolume * 100); } catch {}
+
+function setStatus(s) { statusText = s; render(); }
+const DEBUG = params.has("debug") || location.hash === "#debug";   // #debug: snapserver 404s on query strings
+function render() {
+  statusEl.textContent = active ? `${statusText} · ${active}` : statusText;
+  if (player && player.stats.played && active && statusText === "Listening") {
+    statusEl.textContent = `Listening · ${active}` + (player.stats.late > 20 ? " · catching up" : "");
+  }
+  if (DEBUG && player && player.ctx) {
+    const st = player.stats, c = player.clock;
+    statusEl.textContent += ` · ${player.codec || "?"} ${player.ctx.sampleRate}Hz · err ${st.err}ms · late ${st.late} · anchors ${st.anchors} · rtt ${c.samples.length ? Math.round(Math.min(...c.samples.map(x => x.rtt))) : "?"}ms · outlat ${Math.round(((player.ctx.outputLatency || player.ctx.baseLatency || 0)) * 1000)}ms`;
+  }
+}
+if (DEBUG) setInterval(render, 1000);
+function colourFor(name) { return COLOURS[name.toLowerCase()] || "var(--grey)"; }   // colour follows the stream id, not the display name
+
+async function refreshStreams() {
+  try {
+    const s = await serverStatus();
+    const counts = {};
+    for (const g of s.groups) counts[g.stream_id] = (counts[g.stream_id] || 0) + g.clients.filter(c => c.connected).length;
+    const list = s.streams.map(st => ({ id: st.id, name: displayNames[st.id] || (st.uri && st.uri.query && st.uri.query.name) || st.id, count: counts[st.id] || 0,
+      now: (st.properties && st.properties.metadata && st.properties.metadata.title) || "" }));
+    const changed = JSON.stringify(list.map(x => x.id)) !== JSON.stringify(streams.map(x => x.id));
+    streams = list;
+    if (changed) buildTiles(); else updateTiles();
+    if (!statusText) setStatus("Tap a colour to listen");
+  } catch (e) {
+    if (!streams.length) setStatus("Can't reach the server");
+  }
+}
+function buildTiles() {
+  tilesEl.innerHTML = "";
+  for (const st of streams) {
+    const b = document.createElement("button");
+    b.className = "tile"; b.style.setProperty("--c", colourFor(st.id)); b.dataset.id = st.id;
+    b.innerHTML = `<span class="dot"></span><span class="name"></span><span class="count"></span><span class="now"></span>`;
+    b.addEventListener("click", () => choose(st.id));
+    tilesEl.appendChild(b);
+  }
+  updateTiles();
+}
+function updateTiles() {
+  for (const b of tilesEl.children) {
+    const st = streams.find(x => x.id === b.dataset.id); if (!st) continue;
+    b.querySelector(".name").textContent = st.name;
+    b.querySelector(".count").textContent = st.count === 1 ? "1 listening" : `${st.count} listening`;
+    b.querySelector(".now").textContent = st.now;
+    b.classList.toggle("active", st.id === active);
+    b.setAttribute("aria-pressed", String(st.id === active));
+  }
+}
+let groupId = null, chooseSeq = 0, startPromise = null;
+async function myGroupId() {
+  if (groupId) return groupId;
+  for (let i = 0; i < 20; i++) {
+    const s = await serverStatus();
+    for (const g of s.groups) if (g.clients.some(c => c.id === CLIENT_ID)) return (groupId = g.id);
+    await new Promise(r => setTimeout(r, 250));
+  }
+  throw new Error("client not registered");
+}
+async function choose(id) {
+  if (id === active && player && !player.stopped) return;      // already on it
+  const seq = ++chooseSeq;
+  active = id; updateTiles(); stopEl.disabled = false;
+  if (!player) player = new Player(setStatus);
+  try {
+    if (!startPromise) startPromise = player.start().catch(e => { startPromise = null; throw e; });
+    await startPromise;
+    const gid = await myGroupId();
+    if (seq !== chooseSeq) return;                                // a newer tap took over
+    try { await rpc("Group.SetStream", { id: gid, stream_id: id }); }
+    catch (e) { groupId = null; const g2 = await myGroupId(); if (seq !== chooseSeq) return; await rpc("Group.SetStream", { id: g2, stream_id: id }); }
+    if (seq !== chooseSeq) return;
+    if ("mediaSession" in navigator) {
+      const st = streams.find(x => x.id === id);
+      navigator.mediaSession.metadata = new MediaMetadata({ title: st ? st.name : id, artist: "Silent Disco" });
+      navigator.mediaSession.setActionHandler("pause", () => stopAll());
+      navigator.mediaSession.setActionHandler("play", () => { const a = active; active = null; choose(a); });
+    }
+  } catch (e) { if (seq === chooseSeq) setStatus("Could not join: " + e.message); }
+  refreshStreams();
+}
+function stopAll() { if (player) player.stop(); startPromise = null; active = null; stopEl.disabled = true; updateTiles(); render(); }
+stopEl.addEventListener("click", stopAll);
+volEl.addEventListener("input", () => { userVolume = volEl.value / 100; try { localStorage.setItem("sd-vol", volEl.value); } catch {} if (player) player.applyGain(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !player || player.stopped) return;
+  if (player.ctx && player.ctx.state !== "running") player.ctx.resume().catch(() => {});
+  if (!player.ws || player.ws.readyState > 1) player.connect();
+});
+
+refreshNames().then(refreshStreams); setInterval(refreshStreams, 2000); setInterval(refreshNames, 10000);
+window.__sd = { get player() { return player; } };   // for tests
+})();
+</script>
+</body>
+</html>

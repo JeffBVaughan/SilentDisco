@@ -412,6 +412,89 @@ year.
 
 ---
 
+## 10a. Second product direction: multi-language audio for tours, churches and venues
+
+Added 2026-11-01, after the home-party stack was running. What we built is
+really "stations on a box": one server, N channels, every phone a tuner,
+everything in sync. Swap colours for languages and it is a tour-guide and
+interpretation system, which is an existing market with awkward products.
+
+**Who buys this today, and what they put up with**
+
+| Buyer | Current answer | Pain |
+|---|---|---|
+| Churches with a second-language service | Radio receiver kits (Williams Sound, Listen Technologies), $1,500 to $5,000 per 20 receivers | Handing out and collecting receivers, batteries, one channel per kit |
+| Museums and fixed exhibits | Rented audio guides, or app plus cloud | Device logistics, per-visitor licence fees |
+| Walking and factory tours | Sennheiser Tourguide-style RF packs | Same logistics, guide carries the transmitter, one language per transmitter |
+| Conferences, breakout rooms | Interpretation booths with IR receivers | Expensive, installed by a contractor |
+| App-based rivals (LiveVoice, Listen Everywhere, AudioFetch) | Phone app, cloud or dedicated Wi-Fi hardware | Needs internet or $1,000+ hardware, often priced per listener |
+
+**Why our stack fits with few changes**
+
+- Channel per language is a rename. The join page already takes any names.
+- Runs with no internet. The box is the whole system.
+- Nothing to install on the listener's phone, nothing to collect afterwards.
+- Snapcast's one-second buffer does not matter: an interpreter is already a
+  sentence behind the speaker.
+- Opus at about 100 kbit/s per listener means a Pi-class box on its own
+  hotspot serves a room; a Pi 4 or 5 serves a hall.
+
+**What is missing, in build order**
+
+1. *Live inputs.* Every channel is a playlist today. Interpretation needs a
+   microphone per channel. Two routes, both wanted:
+   - Snapcast can read an ALSA capture device directly (`alsa://` source),
+     so a USB mic or a small USB interface per interpreter works with a
+     config change. Good for churches, where the interpreter sits still.
+   - A "broadcast from my phone" page: the interpreter opens a page, taps
+     a language, and their phone's microphone becomes that channel. Browser
+     to server audio over a WebSocket, server writes it into the channel's
+     FIFO. This is the walking-tour version and also gives a party host an
+     announcement microphone, so it is worth building regardless.
+2. *Hotspot mode.* The Pi as its own access point, a QR that carries the
+   Wi-Fi credentials so guests join without typing, DHCP and a captive
+   landing on the join page. Already on the roadmap for the party box.
+3. *Battery and range.* A USB power bank runs a Pi 3B all day. Outdoor Wi-Fi
+   range from a Pi is 30 to 50 m, so for walking tours the box travels in the
+   guide's bag; for fixed venues it sits by the speaker.
+4. *Listener-side niceties.* Larger text, a language flag per tile, and a
+   "raise hand" button are cheap and make demos land.
+
+**What changes versus the party product**
+
+- Sync between listeners stops mattering; latency from speaker to ear
+  matters a little (keep it under about two seconds including the
+  interpreter).
+- Loudness and intelligibility matter more than fidelity: a speech preset
+  (mono, 32 kbit/s Opus, a compressor) halves the bandwidth again and sounds
+  better on a phone speaker in a pocket.
+- Licensing drops out entirely for speech, which removes the party
+  product's biggest legal question.
+
+**Go-to-market, cheapest first**
+
+1. One church with a Spanish or English second service. Fixed setup, weekly
+   use, tolerant of rough edges, talks to other churches.
+2. A local museum or brewery tour as the walking-tour pilot with the
+   hotspot and battery.
+3. Conference and event AV contractors, who already own the customer
+   relationships and would rent the box as a line item.
+
+Price anchor: a single rental RF headset kit for one event costs more than
+the whole box. A box plus a year of updates at a few hundred dollars, or a
+monthly fee for venues, undercuts every rival above while being simpler to
+operate than any of them.
+
+**Risks specific to this direction**
+
+- Phone Wi-Fi power saving: a listener's phone with the screen off may drop
+  the stream after a few minutes on some Android builds. The media-session
+  trick in the join page helps; needs field testing per device.
+- Hotspot capacity on a Pi 3B is the limiting factor; a Pi 5 or a small
+  dedicated access point is the fix for rooms over about 15 listeners.
+- Interpreters need a reliable mic path. The phone-mic page is convenient
+  but a $30 USB mic into the box is bulletproof; offer both.
+
 ## 11. Risks, ranked
 
 1. **Picking B first and sinking months into sync** before learning whether
@@ -479,6 +562,10 @@ app with billing. Second and third pilot events with an outside organizer.
 
 **Q1 2027: B or C** depending on the spike result and what the earbud market
 looks like by then.
+
+**In parallel, once the party stack is stable:** the live-input page and
+hotspot mode from section 10a, since both serve the party product too and
+unlock the tour and church direction.
 
 ---
 
