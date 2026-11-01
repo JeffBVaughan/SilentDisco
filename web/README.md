@@ -11,7 +11,10 @@ server the same way the native clients do, and schedules each 20 ms PCM
 chunk on the Web Audio clock. That is why phones stay within a few
 milliseconds of each other and of the pucks.
 
-- Requires `codec = pcm` on the server (set in `server/config/snapserver.conf`).
+- Plays `opus` (via the browser's WebCodecs decoder; Chrome, Android, Firefox
+  130+, recent iOS Safari) and `pcm` (decoded by hand). The server ships on
+  Opus because a Pi on Wi-Fi cannot sustain PCM to several listeners; the
+  page tells you if the browser can't decode.
 - Served by snapserver itself from `/var/lib/silentdisco/www/`; the
   installer copies it there. Snapweb lives beside it at `/snapweb/`.
 - Listener counts and now-playing come from `Server.GetStatus` every 2 s.
@@ -21,8 +24,8 @@ milliseconds of each other and of the pucks.
   where the OS allows it.
 - `?host=pi:1780` lets you open the file from anywhere and point it at a Pi.
 
-Tested headless against a local snapserver with two PCM streams: 50 chunks
-a second, none dropped, scheduling error under 10 ms, switching works.
+Tested headless against a local snapserver on Opus and on PCM: 50 chunks a
+second, none dropped, scheduling error under 15 ms, switching works.
 
 Testing locally without a Pi:
 

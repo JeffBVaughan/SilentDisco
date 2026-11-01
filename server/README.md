@@ -19,8 +19,10 @@ client picks one of the four streams; switching is instant.
 
 - Raspberry Pi 3B, a microSD card (8 GB+), its power supply.
 - An Ethernet cable to your router. The 3B's Wi-Fi is 2.4 GHz only and
-  shares an antenna with Bluetooth; serving a dozen audio clients over it
-  works but is the first thing to get flaky. Wired is boring and reliable.
+  shares an antenna with Bluetooth. On Wi-Fi it could not sustain raw PCM to
+  even two listeners in testing (choppy audio, hundreds of retried packets),
+  which is why the stream is Opus. Wired is boring and reliable, and it is the
+  server: its link is shared by every listener.
 - Some music files, sorted into four folders.
 
 ## 1. Flash the card
