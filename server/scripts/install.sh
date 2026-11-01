@@ -116,10 +116,16 @@ chmod 644 /etc/systemd/system/silentdisco-channel@.service
 systemctl daemon-reload
 systemctl enable snapserver
 systemctl restart snapserver   # restart, not just enable: the config may have changed
-for c in "${colours[@]}"; do
-  systemctl enable "silentdisco-channel@$c"
-  systemctl restart "silentdisco-channel@$c"
-done
+if [[ -f /etc/systemd/system/silentdisco-mpd@.service ]]; then
+  # host/install.sh has taken over the channels with MPD; the ffmpeg loopers stay off
+  for c in "${colours[@]}"; do systemctl disable --now "silentdisco-channel@$c" >/dev/null 2>&1 || true; done
+  for c in "${colours[@]}"; do systemctl restart "silentdisco-mpd@$c" 2>/dev/null || true; done
+else
+  for c in "${colours[@]}"; do
+    systemctl enable "silentdisco-channel@$c"
+    systemctl restart "silentdisco-channel@$c"
+  done
+fi
 
 echo "== hostname"
 if [[ "$(hostname)" != "silentdisco" ]]; then
@@ -136,6 +142,7 @@ echo "   Host page:   http://${ip}:1780/host/      (after host/install.sh)"
 echo "   Snapweb:     http://${ip}:1780/snapweb/   (raw Snapcast panel)"
 echo "   Music goes in: /var/lib/silentdisco/music/{yellow,red,green,blue}/"
 echo "   Logs:        journalctl -fu snapserver"
+[[ -f /etc/systemd/system/silentdisco-mpd@.service ]] && echo "   Channels:    MPD (host/install.sh)" || echo "   Channels:    ffmpeg loopers (run host/install.sh for MPD + the host page)"
 echo "================================================================"
 if [[ -n "${SUDO_USER:-}" ]]; then
   echo " Note: $SUDO_USER was added to the $SNAP_GROUP group. Log out and back in"
