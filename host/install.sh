@@ -14,7 +14,7 @@ SNAP_USER="$(systemctl show snapserver -p User --value 2>/dev/null || true)"
 SNAP_GROUP="$(id -gn "$SNAP_USER")"
 
 echo "== packages"
-apt-get install -y -qq mpd >/dev/null
+apt-get install -y -qq mpd mpc >/dev/null
 # the stock single MPD must not run; we run one per channel
 systemctl disable --now mpd.service mpd.socket >/dev/null 2>&1 || true
 
