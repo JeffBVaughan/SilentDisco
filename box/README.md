@@ -77,6 +77,13 @@ i2cdetect -y 1
 journalctl -fu silentdisco-face
 ```
 
+Check the ring's colour order (stops the service, lights pure red, green,
+blue, white for 3 s each, then restarts the service):
+
+```bash
+sudo systemctl stop silentdisco-face && sudo /opt/silentdisco-face/bin/python /opt/silentdisco-face/face.py --test; sudo systemctl start silentdisco-face
+```
+
 Test without hardware, or before wiring:
 
 ```bash
@@ -93,6 +100,7 @@ sudo /opt/silentdisco-face/bin/python /opt/silentdisco-face/face.py --dry-run
 | `FACE_LED_BRIGHT` | 96 | 0 to 255 |
 | `FACE_LED_COUNT` | 16 | Use 8 with the small ring, two pixels per channel |
 | `FACE_OLED_ADDR` | 0x3C | I2C address |
+| `FACE_LED_ORDER` | GRB | Colour byte order of the ring. Run the test below; if red shows as green, try RGB, then BRG |
 | `FACE_DIM` | 0.06 | Idle glow of an empty quadrant, as a fraction of full colour |
 | `FACE_PURE` | 1 | 1 for saturated primaries, 0 for softer mixes that diffuse nicer |
 

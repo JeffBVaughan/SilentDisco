@@ -31,6 +31,7 @@ LED_OFFSET = int(os.environ.get("FACE_LED_OFFSET", "0"))   # rotate so Yellow si
 OLED_ADDR  = int(os.environ.get("FACE_OLED_ADDR", "0x3C"), 16)
 DIM        = float(os.environ.get("FACE_DIM", "0.06"))   # idle glow as a fraction of full colour
 PURE       = os.environ.get("FACE_PURE", "1") == "1"     # 1: saturated primaries, 0: softer mixes
+LED_ORDER  = os.environ.get("FACE_LED_ORDER", "GRB")      # WS2812 is GRB; some rings are RGB, BRG, RGBW...
 
 # channel name (as in snapserver.conf) -> colour, in the order they go round the ring
 CHANNELS = [
@@ -73,9 +74,18 @@ def join_url():
 class Ring:
     def __init__(self):
         from rpi_ws281x import PixelStrip, Color
+        import rpi_ws281x as ws
         self.Color = Color
-        self.strip = PixelStrip(LED_COUNT, LED_PIN, brightness=LED_BRIGHT)
+        strip_type = getattr(ws, f"WS2811_STRIP_{LED_ORDER}", None) or getattr(ws, f"SK6812_STRIP_{LED_ORDER}", None)
+        if strip_type is None:
+            raise ValueError(f"unknown FACE_LED_ORDER {LED_ORDER}")
+        self.strip = PixelStrip(LED_COUNT, LED_PIN, brightness=LED_BRIGHT, strip_type=strip_type)
         self.strip.begin()
+
+    def fill(self, rgb):
+        for i in range(LED_COUNT):
+            self.strip.setPixelColor(i, self.Color(*rgb))
+        self.strip.show()
 
     def show(self, counts, t):
         for ci, (name, rgb) in enumerate(CHANNELS):
@@ -162,7 +172,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="print state, touch no hardware")
     ap.add_argument("--frame", metavar="PNG", help="with --dry-run: also write the OLED frame to this PNG")
+    ap.add_argument("--test", action="store_true", help="light the ring pure red, green, blue, white for 3 s each, then exit")
     args = ap.parse_args()
+
+    if args.test:
+        ring = Ring()
+        for name, rgb in (("RED", (255, 0, 0)), ("GREEN", (0, 255, 0)), ("BLUE", (0, 0, 255)), ("WHITE", (255, 255, 255))):
+            print(f"ring should now be {name}", flush=True)
+            ring.fill(rgb); time.sleep(3)
+        ring.off()
+        print("done. If RED showed as green (or any swap), set FACE_LED_ORDER to match: GRB is default, try RGB, BRG, RBG, GBR, BGR.")
+        return
 
     ring = oled = None
     if not args.dry_run:
