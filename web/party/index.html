@@ -121,14 +121,25 @@ function timeMsg() { const p = new ArrayBuffer(8); tvWrite(new DataView(p), 0, 0
 
 // ------------------------------------------------------------ clock: server - client offset
 class Clock {
-  constructor() { this.diffs = []; this.diff = 0; }
+  // server-minus-client offset. Wi-Fi on a phone has jittery, lopsided round trips, so
+  // rather than a plain median we trust the samples with the shortest round trip (NTP-style)
+  // and slew the applied offset toward the estimate instead of jumping.
+  constructor() { this.samples = []; this.est = null; this.diff = null; }
   update(c2s, s2c) {
-    this.diffs.push((c2s - s2c) / 2);
-    if (this.diffs.length > 40) this.diffs.shift();
-    const s = [...this.diffs].sort((a, b) => a - b);
-    this.diff = s[Math.floor(s.length / 2)];
+    this.samples.push({ diff: (c2s - s2c) / 2, rtt: c2s + s2c, t: performance.now() });
+    if (this.samples.length > 60) this.samples.shift();
+    const best = [...this.samples].sort((a, b) => a.rtt - b.rtt).slice(0, Math.max(3, Math.ceil(this.samples.length / 4)));
+    const ds = best.map(x => x.diff).sort((a, b) => a - b);
+    this.est = ds[Math.floor(ds.length / 2)];
+    if (this.diff === null) this.diff = this.est;
   }
-  serverToClient(ms) { return ms - this.diff; }
+  tick() {                                   // called per chunk: move at most 0.5 ms toward the estimate
+    if (this.est === null || this.diff === null) return;
+    const d = this.est - this.diff;
+    this.diff += Math.sign(d) * Math.min(Math.abs(d), 0.5);
+  }
+  serverToClient(ms) { return ms - (this.diff ?? 0); }
+  ready() { return this.diff !== null; }
 }
 
 // ------------------------------------------------------------ player
@@ -138,21 +149,28 @@ class Player {
     this.clock = new Clock(); this.bufferMs = 1000; this.latencyMs = 0; this.volume = 1; this.muted = false;
     this.sampleRate = 48000; this.channels = 2; this.bits = 16; this.codec = null; this.decoder = null; this.decoderReady = false;
     this.nextStart = 0; this.anchored = false; this.lastSync = 0; this.timeTimer = null;
-    this.stats = { late: 0, played: 0, err: 0 };
+    this.stats = { late: 0, played: 0, err: 0, anchors: 0 };
     this.stopped = true;
   }
   async start() {
     this.stopped = false;
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
-      this.gain = this.ctx.createGain(); this.gain.gain.value = userVolume;
-      const dest = this.ctx.createMediaStreamDestination();
-      this.gain.connect(dest);
-      const el = document.getElementById("keepalive");
-      el.srcObject = dest.stream; el.play().catch(() => {});
-    }
+    if (!this.ctx) this.openContext(this.sampleRate);
     if (this.ctx.state !== "running") await this.ctx.resume();
     this.connect();
+  }
+  openContext(rate) {
+    // Pin the context to the stream's rate so chunks are not resampled one by one
+    // (per-chunk resampling crackles at every seam on 44.1 kHz phones).
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx;
+    try { ctx = new AC({ latencyHint: "playback", sampleRate: rate }); } catch { ctx = new AC({ latencyHint: "playback" }); }
+    this.ctx = ctx;
+    this.gain = ctx.createGain(); this.gain.gain.value = userVolume;
+    const dest = ctx.createMediaStreamDestination();
+    this.gain.connect(dest);
+    const el = document.getElementById("keepalive");
+    el.srcObject = dest.stream; el.play().catch(() => {});
+    this.anchored = false;
   }
   connect() {
     if (this.stopped) return;
@@ -207,6 +225,11 @@ class Player {
         } else {
           this.onStatus(`Server codec "${this.codec}" not supported here`);
         }
+        if (this.ctx && this.ctx.sampleRate !== this.sampleRate) {
+          try { this.ctx.close(); } catch {}
+          this.openContext(this.sampleRate);
+          this.ctx.resume().catch(() => {});
+        }
         this.anchored = false;                                 // new stream: resync
         break;
       }
@@ -254,20 +277,32 @@ class Player {
   // ---- scheduling on the audio clock
   schedule(planes, frames, ts) {
     const ctx = this.ctx;
+    if (!this.clock.ready()) return;
+    this.clock.tick();
     // when should the first sample of this chunk hit the ear, in audio-context seconds?
     const playClientMs = this.clock.serverToClient(ts + this.bufferMs - this.latencyMs);
     const outLat = ctx.outputLatency || ctx.baseLatency || 0;
     const target = ctx.currentTime + (playClientMs - nowMs()) / 1000 - outLat;
-    const dur = frames / this.sampleRate;
-    if (!this.anchored || Math.abs(target - this.nextStart) > 0.015) {
-      if (target < ctx.currentTime + 0.002) { this.stats.late++; return; }   // already past: drop
-      this.nextStart = target; this.anchored = true;
+    const rate = this.sampleRate;
+    let err = this.anchored ? target - this.nextStart : Infinity;   // + : we are running early, pad
+    if (!this.anchored || Math.abs(err) > 0.1) {                      // way off: hard re-anchor
+      if (target < ctx.currentTime + 0.002) { this.stats.late++; return; }
+      this.nextStart = target; this.anchored = true; err = 0; this.stats.anchors++;
     }
-    const ab = ctx.createBuffer(planes.length, frames, this.sampleRate);
-    for (let c = 0; c < planes.length; c++) ab.copyToChannel(planes[c], c);
+    // gentle correction: trim or pad up to 1 % of the chunk (about 10 ms per second of audio)
+    const maxAdj = Math.max(1, Math.round(frames * 0.01));
+    const adj = Math.max(-maxAdj, Math.min(maxAdj, Math.round(err * rate)));
+    const outFrames = frames + adj;
+    if (outFrames <= 0) { this.stats.late++; return; }
+    const ab = ctx.createBuffer(planes.length, outFrames, rate);
+    for (let c = 0; c < planes.length; c++) {
+      const src = planes[c], dst = ab.getChannelData(c);
+      if (adj >= 0) { dst.set(src); if (adj) dst.fill(src[frames - 1] || 0, frames); }   // pad by holding the last sample
+      else dst.set(src.subarray(0, outFrames));                                            // trim the tail
+    }
     const node = ctx.createBufferSource(); node.buffer = ab; node.connect(this.gain);
-    node.start(this.nextStart); this.nextStart += dur; this.stats.played++;
-    this.stats.err = Math.round((target - (this.nextStart - dur)) * 1000);
+    node.start(this.nextStart); this.nextStart += outFrames / rate; this.stats.played++;
+    this.stats.err = Math.round(err * 1000);
   }
   applyGain() { if (this.gain) this.gain.gain.value = this.muted ? 0 : this.volume * userVolume; }
 }
@@ -279,12 +314,18 @@ let userVolume = 0.8, active = null, streams = [], player = null, statusText = "
 try { userVolume = (parseInt(localStorage.getItem("sd-vol") || "80", 10)) / 100; volEl.value = Math.round(userVolume * 100); } catch {}
 
 function setStatus(s) { statusText = s; render(); }
+const DEBUG = params.has("debug") || location.hash === "#debug";   // #debug: snapserver 404s on query strings
 function render() {
   statusEl.textContent = active ? `${statusText} · ${active}` : statusText;
   if (player && player.stats.played && active && statusText === "Listening") {
     statusEl.textContent = `Listening · ${active}` + (player.stats.late > 20 ? " · catching up" : "");
   }
+  if (DEBUG && player && player.ctx) {
+    const st = player.stats, c = player.clock;
+    statusEl.textContent += ` · ${player.codec || "?"} ${player.ctx.sampleRate}Hz · err ${st.err}ms · late ${st.late} · anchors ${st.anchors} · rtt ${c.samples.length ? Math.round(Math.min(...c.samples.map(x => x.rtt))) : "?"}ms`;
+  }
 }
+if (DEBUG) setInterval(render, 1000);
 function colourFor(name) { return COLOURS[name.toLowerCase()] || "var(--grey)"; }   // colour follows the stream id, not the display name
 
 async function refreshStreams() {
