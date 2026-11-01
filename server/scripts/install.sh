@@ -132,9 +132,10 @@ echo
 echo "================================================================"
 echo " SilentDisco server is up."
 echo "   Join page:   http://${ip}:1780/   (or http://silentdisco.local:1780/)"
-echo "   Host panel:  http://${ip}:1780/snapweb/"
+echo "   Host page:   http://${ip}:1780/host/      (after host/install.sh)"
+echo "   Snapweb:     http://${ip}:1780/snapweb/   (raw Snapcast panel)"
 echo "   Music goes in: /var/lib/silentdisco/music/{yellow,red,green,blue}/"
-echo "   Logs:        journalctl -fu snapserver -u 'silentdisco-channel@*'"
+echo "   Logs:        journalctl -fu snapserver"
 echo "================================================================"
 if [[ -n "${SUDO_USER:-}" ]]; then
   echo " Note: $SUDO_USER was added to the $SNAP_GROUP group. Log out and back in"
