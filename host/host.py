@@ -338,7 +338,10 @@ class Handler(BaseHTTPRequestHandler):
             path = os.path.join(BASE, "music", c["id"].lower(), name) if c else ""
             if not c or not name or not os.path.isfile(path): return self._send(404, {"error": "no such file"})
             os.remove(path)
-            try: mpd(c["port"], "update")
+            try:
+                (found,) = mpd(c["port"], f"playlistfind file {mpd_quote(name)}")
+                ids = [v for k, v in found if k == "Id"]
+                mpd(c["port"], *[f"deleteid {i}" for i in ids], "update")
             except Exception: pass
             return self._send(200, {"ok": True})
         self._send(404, {"error": "not found"})

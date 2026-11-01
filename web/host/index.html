@@ -57,7 +57,14 @@ select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px
 .queue .row.cur{color:var(--c)}
 .queue .row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .queue .row .t small{color:var(--ink-3);margin-left:6px}
+.queue .row .acts{display:flex;gap:4px}
 .queue .row button{padding:2px 8px;border-radius:6px;font-size:.8rem}
+.folder{border-top:1px solid var(--line);max-height:220px;overflow-y:auto}
+.folder .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:5px 14px;border-bottom:1px solid var(--line);font-size:.85rem;color:var(--ink-2)}
+.folder .row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.folder .row .acts{display:flex;gap:4px}
+.folder .row button{padding:2px 8px;border-radius:6px;font-size:.78rem}
+.folder .empty{padding:12px;color:var(--ink-3);font-size:.85rem;text-align:center}
 .queue .empty{padding:14px;color:var(--ink-3);font-size:.9rem;text-align:center}
 .drop{margin:10px 14px 14px;border:1.5px dashed var(--line);border-radius:12px;padding:12px;text-align:center;color:var(--ink-2);font-size:.9rem;transition:border-color .15s,background .15s}
 .drop.over{border-color:var(--c);background:var(--panel-2)}
@@ -181,9 +188,10 @@ function makeCard(c) {
     <div class="queue"></div>
     <div class="drop">
       <div>Drop songs here, or <label style="text-decoration:underline;cursor:pointer">choose files<input type="file" multiple accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg,.opus,.aac"></label></div>
-      <div class="lib"><span class="libcount" style="align-self:center;color:var(--ink-3);font-size:.82rem"></span><button class="fill">Queue the whole folder</button><button class="clear">Clear queue</button></div>
+      <div class="lib"><button class="fill">Queue the whole folder</button><button class="clear">Clear queue</button><button class="showfolder">Folder</button></div>
       <div class="up"></div>
-    </div>`;
+    </div>
+    <div class="folder hidden"></div>`;
   const id = c.id;
   const name = $(".name", card);
   name.addEventListener("focus", () => editing = id);
@@ -198,6 +206,9 @@ function makeCard(c) {
   vol.addEventListener("input", () => { dragging = id; $(".vol .v", card).textContent = vol.value; });
   vol.addEventListener("change", () => { dragging = null; cmd(id, "volume", { value: +vol.value }); });
   $(".fill", card).addEventListener("click", () => cmd(id, "fill"));
+  const folder = $(".folder", card), showBtn = $(".showfolder", card);
+  card._folderOpen = false;
+  showBtn.addEventListener("click", () => { card._folderOpen = !card._folderOpen; folder.classList.toggle("hidden", !card._folderOpen); showBtn.textContent = card._folderOpen ? "Hide folder" : "Folder"; if (card._folderOpen) loadFolder(card, c); });
   $(".clear", card).addEventListener("click", () => { if (confirm(`Clear the ${c.name} queue?`)) cmd(id, "clear"); });
   // uploads
   const drop = $(".drop", card), fileIn = $("input[type=file]", card), up = $(".up", card);
@@ -233,19 +244,40 @@ function updateCard(card, c) {
   const se = $(".state", card);
   se.textContent = c.error ? c.error.slice(0, 60) : (st.updating ? "indexing…" : `${st.queue_len} queued · ${c.library_count} in folder${st.random ? " · random" : ""}`);
   se.classList.toggle("err", !!c.error);
-  $(".libcount", card).textContent = "";
   // queue
   const q = $(".queue", card);
   const curId = c.now ? c.now.id : null;
-  const html = c.queue.length ? c.queue.slice(0, 60).map(s => `<div class="row${s.id === curId ? " cur" : ""}" data-id="${s.id}"><span class="t">${esc(s.title)}${s.artist ? `<small>${esc(s.artist)}</small>` : ""}</span><button class="rm" title="Remove">✕</button></div>`).join("") + (c.queue.length > 60 ? `<div class="empty">and ${c.queue.length - 60} more</div>` : "") : `<div class="empty">Queue is empty. Drop songs below or queue the folder.</div>`;
+  const html = c.queue.length ? c.queue.slice(0, 60).map(s => `<div class="row${s.id === curId ? " cur" : ""}" data-id="${s.id}" data-file="${esc(s.file)}"><span class="t">${esc(s.title)}${s.artist ? `<small>${esc(s.artist)}</small>` : ""}</span><span class="acts"><button class="rm" title="Remove from queue">✕</button><button class="del" title="Delete the file from the folder">🗑</button></span></div>`).join("") + (c.queue.length > 60 ? `<div class="empty">and ${c.queue.length - 60} more</div>` : "") : `<div class="empty">Queue is empty. Drop songs below or queue the folder.</div>`;
   if (q.dataset.html !== html) {
     q.innerHTML = html; q.dataset.html = html;
     for (const row of q.querySelectorAll(".row")) {
       row.addEventListener("click", () => cmd(c.id, "jump", { id: +row.dataset.id }));
       $(".rm", row).addEventListener("click", e => { e.stopPropagation(); cmd(c.id, "remove", { id: +row.dataset.id }); });
+      $(".del", row).addEventListener("click", e => { e.stopPropagation(); deleteFile(card, c, row.dataset.file); });
     }
   }
+  if (card._folderOpen && (card._folderCount !== c.library_count)) loadFolder(card, c);
+  card._folderCount = c.library_count;
   card._prog = c.now ? { elapsed: st.elapsed, duration: c.now.duration, playing: st.state === "play", at: lastPoll } : null;
+}
+
+async function deleteFile(card, c, file) {
+  if (!file) return;
+  if (!confirm(`Delete "${file}" from the ${c.name} folder? This removes the file.`)) return;
+  try { await api(`/api/channel/${encodeURIComponent(c.id)}/files?name=${encodeURIComponent(file)}`, { method: "DELETE" }); }
+  catch (e) { showErr(e); }
+  await poll(); if (card._folderOpen) loadFolder(card, c);
+}
+async function loadFolder(card, c) {
+  const folder = $(".folder", card);
+  try {
+    const files = await api(`/api/channel/${encodeURIComponent(c.id)}/library`);
+    folder.innerHTML = files.length ? files.map(f => `<div class="row" data-file="${esc(f)}"><span class="t">${esc(f)}</span><span class="acts"><button class="add" title="Add to queue">+ queue</button><button class="del" title="Delete the file">🗑</button></span></div>`).join("") : `<div class="empty">Folder is empty.</div>`;
+    for (const row of folder.querySelectorAll(".row")) {
+      $(".add", row).addEventListener("click", () => cmd(c.id, "add", { file: row.dataset.file }));
+      $(".del", row).addEventListener("click", () => deleteFile(card, c, row.dataset.file));
+    }
+  } catch (e) { folder.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
 // progress bars tick between polls

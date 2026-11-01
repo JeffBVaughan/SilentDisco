@@ -5,8 +5,10 @@ The page for whoever runs the party: `http://<pi>:1780/host/`, behind a PIN.
 ![host page](../web/host-preview.png)
 
 Per colour: now playing with progress, play, pause, skip, previous, shuffle,
-volume, the queue (tap a row to jump, ✕ to remove), drag-and-drop uploads
-straight from a phone or laptop, "queue the whole folder", clear. Rename a
+volume, the queue (tap a row to jump, ✕ to remove from the queue, 🗑 to
+delete the file from the folder), a Folder view of every file with queue and
+delete buttons, drag-and-drop uploads straight from a phone or laptop,
+"queue the whole folder", clear. Rename a
 channel for the night by tapping its name. Across the room: live listener
 counts, "Everyone to Red for 30 s" with automatic release, mute everyone.
 
@@ -65,7 +67,7 @@ header.
 | `GET /api/state` | everything the page shows |
 | `POST /api/channel/<id>/cmd` | `{"cmd": "play"\|"pause"\|"next"\|"prev"\|"shuffle"\|"clear"\|"fill"\|"volume","value":N\|"random","value":0/1\|"remove","id":N\|"jump","id":N\|"add","file":"…"}` |
 | `PUT /api/channel/<id>/files?name=f.mp3` | body is the file; indexed and queued |
-| `DELETE /api/channel/<id>/files?name=f.mp3` | |
+| `DELETE /api/channel/<id>/files?name=f.mp3` | removes the file and any queue entries for it |
 | `GET /api/channel/<id>/library` | file list |
 | `POST /api/channel/<id>/name` | `{"name": "…"}` |
 | `POST /api/takeover` | `{"target": "<id>", "seconds": 30}` |
