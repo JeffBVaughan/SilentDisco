@@ -51,6 +51,7 @@ audio{display:none}
 </footer>
 <div id="help">Use wired earbuds for perfect sync. Bluetooth adds a little delay. <a href="host/">Host page</a></div>
 <audio id="keepalive" playsinline></audio>
+<script src="opus-decoder.min.js"></script>
 
 <script>
 (() => {
@@ -135,7 +136,7 @@ class Player {
   constructor(onStatus) {
     this.onStatus = onStatus; this.ws = null; this.ctx = null; this.gain = null;
     this.clock = new Clock(); this.bufferMs = 1000; this.latencyMs = 0; this.volume = 1; this.muted = false;
-    this.sampleRate = 48000; this.channels = 2; this.bits = 16; this.codec = null; this.decoder = null;
+    this.sampleRate = 48000; this.channels = 2; this.bits = 16; this.codec = null; this.decoder = null; this.decoderReady = false;
     this.nextStart = 0; this.anchored = false; this.lastSync = 0; this.timeTimer = null;
     this.stats = { late: 0, played: 0, err: 0 };
     this.stopped = true;
@@ -200,7 +201,7 @@ class Player {
           this.onStatus("Listening");
         } else if (this.codec === "opus" && payLen >= 12) {   // "OPUS" marker, u32 rate, u16 bits, u16 channels
           this.sampleRate = pay.getUint32(4, true); this.bits = pay.getUint16(8, true); this.channels = pay.getUint16(10, true);
-          if (typeof AudioDecoder === "undefined") { this.onStatus("This browser can't decode Opus; update it or use Chrome"); break; }
+          if (!window["opus-decoder"]) { this.onStatus("Opus decoder failed to load; reload the page"); break; }
           this.openDecoder();
           this.onStatus("Listening");
         } else {
@@ -231,33 +232,24 @@ class Player {
     this.schedule(planes, frames, ts);
   }
   openDecoder() {
-    const dec = new AudioDecoder({
-      output: (ad) => { try { this.onDecoded(ad); } finally { ad.close(); } },
-      error: (e) => { console.warn("decoder", e); this.onStatus("Decoder error, reconnecting…"); this.closeDecoder(); setTimeout(() => this.codec === "opus" && this.openDecoder(), 500); },
-    });
-    dec.configure({ codec: "opus", sampleRate: this.sampleRate, numberOfChannels: this.channels });
-    this.decoder = dec;
+    // libopus compiled to WebAssembly, decoding on the main thread: ~0.2 ms per 20 ms packet.
+    // (The browser's own AudioDecoder would do, but it only exists on HTTPS pages.)
+    const { OpusDecoder } = window["opus-decoder"];
+    const dec = new OpusDecoder({ sampleRate: this.sampleRate, channels: this.channels, forceStereo: this.channels === 1 });
+    this.decoder = dec; this.decoderReady = false;
+    dec.ready.then(() => { if (this.decoder === dec) this.decoderReady = true; })
+             .catch(e => { console.warn("opus init", e); this.onStatus("Opus decoder failed to start"); });
   }
-  closeDecoder() { if (this.decoder) { try { this.decoder.close(); } catch {} this.decoder = null; } }
+  closeDecoder() { if (this.decoder) { try { this.decoder.free(); } catch {} this.decoder = null; this.decoderReady = false; } }
   onOpusChunk(buf, body) {
     const ts = tvRead(body, 0), n = body.getUint32(8, true);
-    if (!n || this.decoder.state !== "configured") return;
-    if (this.decoder.decodeQueueSize > 50) { this.stats.late++; return; }   // we're way behind; drop
-    const data = new Uint8Array(buf, body.byteOffset + 12, n).slice();
-    try { this.decoder.decode(new EncodedAudioChunk({ type: "key", timestamp: Math.round(ts * 1000), data })); }
-    catch (e) { this.stats.late++; }
-  }
-  onDecoded(ad) {
-    const frames = ad.numberOfFrames, ch = ad.numberOfChannels, ts = ad.timestamp / 1000;
-    const planes = [];
-    for (let c = 0; c < ch; c++) {
-      const out = new Float32Array(frames);
-      try { ad.copyTo(out, { planeIndex: c, format: "f32-planar" }); }
-      catch { ad.copyTo(out, { planeIndex: c }); }                    // browser gave planar f32 natively
-      planes.push(out);
-    }
-    if (ad.sampleRate !== this.sampleRate) this.sampleRate = ad.sampleRate;
-    this.schedule(planes, frames, ts);
+    if (!n || !this.decoderReady) return;
+    let out;
+    try { out = this.decoder.decodeFrame(new Uint8Array(buf, body.byteOffset + 12, n)); }
+    catch (e) { this.stats.late++; return; }
+    if (!out || !out.samplesDecoded) return;
+    if (out.sampleRate !== this.sampleRate) this.sampleRate = out.sampleRate;
+    this.schedule(out.channelData, out.samplesDecoded, ts);
   }
   // ---- scheduling on the audio clock
   schedule(planes, frames, ts) {

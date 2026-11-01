@@ -11,10 +11,11 @@ server the same way the native clients do, and schedules each 20 ms PCM
 chunk on the Web Audio clock. That is why phones stay within a few
 milliseconds of each other and of the pucks.
 
-- Plays `opus` (via the browser's WebCodecs decoder; Chrome, Android, Firefox
-  130+, recent iOS Safari) and `pcm` (decoded by hand). The server ships on
-  Opus because a Pi on Wi-Fi cannot sustain PCM to several listeners; the
-  page tells you if the browser can't decode.
+- Plays `opus` and `pcm`. Opus is decoded by libopus compiled to
+  WebAssembly (`opus-decoder.min.js`, vendored, see `VENDOR.md`), which works
+  on any browser from the last few years and, unlike the browser's built-in
+  WebCodecs decoder, does not require an HTTPS page. The server ships on
+  Opus because a Pi on Wi-Fi cannot sustain PCM to several listeners.
 - Served by snapserver itself from `/var/lib/silentdisco/www/`; the
   installer copies it there. Snapweb lives beside it at `/snapweb/`.
 - Listener counts and now-playing come from `Server.GetStatus` every 2 s.
