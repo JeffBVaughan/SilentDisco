@@ -1,0 +1,27 @@
+// Copy to config.h and fill in. config.h is git-ignored.
+#pragma once
+
+// Wi-Fi networks to try, in order. Put the party hotspot first if you use it.
+struct WifiNet { const char* ssid; const char* pass; };
+static const WifiNet WIFI_NETS[] = {
+    {"SilentDisco", "hotspot-password-from-ap-install"},
+    {"YourHomeWifi", "your-home-password"},
+};
+
+// Which puck this is. Shows up on the host page as "puck-07".
+#define PUCK_NUMBER 1
+
+// Snapcast server. Normally found by mDNS; this is the fallback.
+#define SERVER_FALLBACK_IP "192.168.1.196"
+
+// ---- pins (XIAO ESP32-S3 GPIO numbers; D-labels in comments) ----
+#define PIN_I2S_BCK   7    // D8  -> PCM5102A BCK
+#define PIN_I2S_WS    8    // D9  -> PCM5102A LCK
+#define PIN_I2S_DATA  9    // D10 -> PCM5102A DIN
+#define PIN_BTN_CH    2    // D1  -> button to GND (channel; hold = volume)
+#define PIN_BTN_VOL   3    // D2  -> optional second button to GND (volume)
+#define PIN_LED       4    // D3  -> WS2812 data (through 300 ohm)
+#define LED_COUNT     16   // 1 for a single pixel, 16 for the ring
+
+// Brightness 0..255 for the ring (keep modest on battery)
+#define LED_BRIGHT    60

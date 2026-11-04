@@ -15,4 +15,4 @@ and a channel button for anyone with wired headphones.
 - [docs/DISCOVERY.md](docs/DISCOVERY.md): the wider product and hardware
   discovery, including the bigger-event and Auracast options.
 
-Planned: `pucks/firmware/` (ESP32 Snapcast client for the XIAO).
+- [pucks/firmware/](pucks/firmware/README.md): ESP32 Snapcast client for the XIAO puck.
