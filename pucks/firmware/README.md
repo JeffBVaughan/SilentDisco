@@ -77,6 +77,11 @@ earbuds into the module's own jack for the bench.
   `-DCONFIG_PROCESSING_TIME_MS=-150` to `build_flags` and bisect by ear
   against a phone on wired earbuds.
 - No sound at all: check the solder bridges, and that SCK is tied to GND.
+- Build errors inside the audio library about I2S drivers: PlatformIO's
+  stock ESP32 platform is on the older Arduino core. Swap the `platform`
+  line in `platformio.ini` for the community one that tracks the current
+  core:
+  `platform = https://github.com/pioarduino/platform-espressif32/releases/download/stable/platform-espressif32.zip`
 
 ## Not yet
 
