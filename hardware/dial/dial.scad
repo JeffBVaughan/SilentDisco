@@ -37,8 +37,12 @@ pi        = [85, 56, 1.6];
 pi_holes  = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]];   // from the SD-card / HDMI corner
 pi_mount  = "peg";    // "peg": 2.5 mm press-fit pegs, no screws. "screw": holes for M2.5 self-tap.
 standoff_h = 5;
-pi_pos    = [wall + 21, front_t + inner[1] - pi[1] - 1.5];   // PCB corner (x,y); ports stick out 1.5 past the walls
+// The Pi is rotated 180 deg so its HDMI/power edge is at the back wall; that puts
+// Ethernet and USB on the LEFT wall and the SD card on the right.
+// pi_xy() maps a point from the Pi's drawing (SD/HDMI corner at 0,0) into the box.
+pi_pos    = [wall + 1.5, front_t + inner[1] - pi[1] - 1.5];  // box corner where the Pi's (85,0) corner lands
 pi_z      = floor_t + standoff_h;                             // PCB underside
+function pi_xy(px, py) = [pi_pos[0] + pi[0] - px, pi_pos[1] + pi[1] - py];
 // right-wall ports (USB x2, Ethernet) along the PCB's x=85 edge, y positions from the drawing
 right_ports = [[10.25, 16, 13.5], [29, 15.5, 16], [47, 15.5, 16]];   // [y centre, width, height above PCB]
 // back-wall ports along the PCB's y=0 edge: micro-USB, HDMI, audio
@@ -77,12 +81,14 @@ module base() {
     rrect([outer[0], outer[1], outer[2]-lid_t], corner_r);   // walls stop where the lid plate starts
     // cavity
     translate([wall, front_t, floor_t]) cube([inner[0], inner[1], 60]);
-    // right wall port openings
+    // left wall: Ethernet and the two USB stacks
     for (p = right_ports)
-      translate([outer[0]-wall-1, pi_pos[1] + p[0] - p[1]/2 - 1, pi_z + pi[2] - 0.5]) cube([wall+2, p[1]+2, p[2]+1.5]);
-    // back wall port openings
+      translate([-1, pi_xy(0, p[0])[1] - p[1]/2 - 1, pi_z + pi[2] - 0.5]) cube([wall+2, p[1]+2, p[2]+1.5]);
+    // back wall: micro-USB power, HDMI, audio
     for (p = back_ports)
-      translate([pi_pos[0] + p[0] - p[1]/2 - 1, outer[1]-wall-1, pi_z + pi[2] - 0.5]) cube([p[1]+2, wall+2, p[2]+1.5]);
+      translate([pi_xy(p[0], 0)[0] - p[1]/2 - 1, outer[1]-wall-1, pi_z + pi[2] - 0.5]) cube([p[1]+2, wall+2, p[2]+1.5]);
+    // right wall: slot to reach the microSD card
+    translate([outer[0]-wall-1, pi_xy(0, 28)[1] - 8, pi_z - 1.5]) cube([wall+2, 16, 4]);
     // quadrant windows and the recess for the clear disc
     translate([ring_c[0], 0, ring_c[1]]) rotate([-90,0,0]) {
       // four quadrant windows with ribs of rib_w between them (ribs on the axes)
@@ -100,7 +106,7 @@ module base() {
     translate([oled_c[0], 0.6, 10]) rotate([90,0,0]) linear_extrude(1) text(label, size=label_size, halign="center", valign="center", font="Liberation Sans:style=Bold");
     // floor vents under the Pi, and left wall vents
     for (i=[0:vent_slots-1]) translate([pi_pos[0] + 12 + i*9, pi_pos[1] + 8, -1]) rrect([3, 40, floor_t+2], 1.4);
-    for (i=[0:4]) translate([-1, front_t + 30 + i*8, 10]) cube([wall+2, 3, 20]);
+    for (i=[0:4]) translate([outer[0]-wall-1, front_t + 30 + i*8, 14]) cube([wall+2, 3, 20]);
     // back wall lip clearance is a union below; nothing to cut here.
   }
   // everything below lives inside the cavity; clip it there so no feature can poke out
@@ -122,7 +128,7 @@ module base() {
       translate([0,0,-1]) cylinder(d=oled_hole_d, h=10);
     }
   // Pi standoffs
-  for (h = pi_holes) translate([pi_pos[0]+h[0], pi_pos[1]+h[1], floor_t-0.01]) {
+  for (h = pi_holes) translate([pi_xy(h[0], h[1])[0], pi_xy(h[0], h[1])[1], floor_t-0.01]) {
     if (pi_mount == "peg") { cylinder(d=7, h=standoff_h); cylinder(d=2.5, h=standoff_h+pi[2]+1.5); }
     else difference() { cylinder(d=7, h=standoff_h); translate([0,0,1]) cylinder(d=2.2, h=10); }
   }
@@ -167,8 +173,9 @@ module window() {
 
 module components() {
   color("darkgreen") translate([pi_pos[0], pi_pos[1], pi_z]) cube(pi);
-  for (p = right_ports) color("silver") translate([pi_pos[0]+pi[0]-14, pi_pos[1]+p[0]-p[1]/2, pi_z+pi[2]]) cube([17, p[1], p[2]]);
-  for (p = back_ports) color("silver") translate([pi_pos[0]+p[0]-p[1]/2, pi_pos[1]-1, pi_z+pi[2]]) cube([p[1], 10, p[2]]);
+  for (p = right_ports) color("silver") translate([pi_pos[0]-3, pi_xy(0, p[0])[1]-p[1]/2, pi_z+pi[2]]) cube([17, p[1], p[2]]);
+  for (p = back_ports) color("silver") translate([pi_xy(p[0], 0)[0]-p[1]/2, pi_pos[1]+pi[1]-9, pi_z+pi[2]]) cube([p[1], 10, p[2]]);
+  color("black") translate([pi_xy(85, 50)[0]-5, pi_xy(85, 50)[1], pi_z+pi[2]]) cube([51, 5, 8]);   // GPIO header, front edge
   color("black") translate([ring_c[0], front_t+0.6, ring_c[1]]) rotate([-90,0,0]) linear_extrude(ring_h) difference(){ circle(ring_od/2); circle(ring_id/2); }
   color("navy") translate([oled_c[0]-oled_glass_offset[0]-oled_pcb[0]/2, front_t+oled_post_h, oled_c[1]-oled_glass_offset[1]-oled_pcb[1]/2]) cube([oled_pcb[0], 1.2, oled_pcb[1]]);
 }

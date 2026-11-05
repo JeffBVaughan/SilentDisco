@@ -92,7 +92,7 @@ tails clear the posts.
 
 | Part | Material | Orientation | Notes |
 |---|---|---|---|
-| `base` | any | open side up | Pi on four 2.5 mm pegs (set `pi_mount="screw"` for M2.5 holes). Ports out the right and back. Ring cradle and OLED posts on the inside of the front wall. Vents in the floor and left wall. |
+| `base` | any | open side up | Pi on four 2.5 mm pegs (set `pi_mount="screw"` for M2.5 holes). Ethernet and USB out the left wall, HDMI and power out the back, microSD slot on the right. Ring cradle and OLED posts on the inside of the front wall. Vents in the floor and right wall. |
 | `lid` | any | printed upside down, already flipped | Two hooks slide under the back wall lip, two M3 screws at the front corners into inserts. Vents over the Pi. |
 | `window` | **clear PETG** | flat | Ø 47 disc that drops into the recess behind the four quadrant windows. |
 
