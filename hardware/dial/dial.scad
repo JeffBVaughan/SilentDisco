@@ -148,11 +148,12 @@ module lid() {
   difference() {
     union() {
       translate([0,0,z0]) rrect([outer[0], outer[1], lid_t], corner_r);
-      // inner lip on front, left and right
-      translate([wall+fit, front_t+fit, z0-2]) difference() {
-        cube([inner[0]-2*fit, inner[1]-2*fit-2, 2.01]);
-        translate([1.2, 1.2, -1]) cube([inner[0]-2*fit-2.4, inner[1], 5]);
-      }
+      // alignment lips along the left and right walls only. The front has the screw
+      // bosses in its corners and the ring cradle right behind the face, and the back
+      // has the hooks, so a lip there would collide with all three.
+      lip_y0 = front_t + 14;                                   // clear of the front bosses
+      lip_len = inner[1] - 14 - 6;                             // stop short of the back lip and hooks
+      for (x = [wall+fit, outer[0]-wall-fit-1.2]) translate([x, lip_y0, z0-2]) cube([1.2, lip_len, 2.01]);
       // rear hooks
       for (x = lid_hook_x) translate([x-5, outer[1]-wall-3.2, z0-5.5]) {
         cube([10, 1.5, 5.5]);                       // drop
