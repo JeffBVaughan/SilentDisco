@@ -9,7 +9,17 @@ with named numbers is easier to tune after the first test print than a mesh.
 hardware/
   halo/halo.scad      puck: base, tray, lid (clear), cap, clip, fit coupon
   dial/dial.scad      server box: base, lid, window (clear)
+  stl/                ready to slice, one file per part, already in print orientation
+  3mf/                the same parts as 3MF (smaller; Bambu Studio, PrusaSlicer, Cura)
   previews/           renders of the current state
+```
+
+To print, open the files in `stl/` or `3mf/` directly in your slicer; the
+OpenSCAD step is only needed when you change a dimension. Regenerate all of
+them with:
+
+```bash
+cd hardware && for p in coupon base tray lid cap clip; do openscad -q --export-format binstl -D "part=\"$p\"" -o stl/halo-$p.stl halo/halo.scad; done
 ```
 
 Render parts from the command line (or open the file in OpenSCAD and set
