@@ -88,7 +88,7 @@ tails clear the posts.
 ![Dial assembly](previews/dial-assembly.png)
 ![Dial front](previews/dial-front.png)
 
-114 × 80 × 42 mm. Three printed parts:
+114 × 80 × 54 mm (the 44.5 mm ring behind the face sets the height). Three printed parts:
 
 | Part | Material | Orientation | Notes |
 |---|---|---|---|

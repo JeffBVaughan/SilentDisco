@@ -22,7 +22,7 @@ screw_head_d = 6.2;
 screw_head_h = 2.0;
 
 // ---------- box ----------
-outer     = [114, 80, 42];
+outer     = [114, 80, 54];      // tall enough for the 44.5 mm ring behind the face
 wall      = 2.0;
 front_t   = 3.0;      // front wall is thicker: it carries the windows
 floor_t   = 2.0;
@@ -48,7 +48,7 @@ back_ports  = [[10.6, 8.5, 3.5], [32, 16, 6.5], [53.5, 7.5, 7]];      // [x cent
 ring_od   = 44.5;
 ring_id   = 31.7;
 ring_h    = 3.2;
-ring_c    = [33, 21];                 // window centre on the face (x, z)
+ring_c    = [33, 27];                 // window centre on the face (x, z)
 win_ro    = 22.2;                     // quadrant windows, outer radius (inside the cradle)
 win_ri    = 15.0;                     // inner radius (centre stays opaque)
 rib_w     = 2.5;                      // ribs between quadrants
@@ -60,7 +60,7 @@ oled_holes = [23.5, 23.5];            // hole pitch, adjust to your module
 oled_hole_d = 2.0;                    // M2 self-tap
 oled_glass = [26, 14];                // window cut
 oled_glass_offset = [0, -2];          // glass centre relative to PCB centre (pins at the top)
-oled_c    = [86, 21];                 // glass centre on the face (x, z)
+oled_c    = [86, 27];                 // glass centre on the face (x, z)
 oled_post_h = 2.5;
 
 // ---------- lid ----------
@@ -74,7 +74,7 @@ module rbox_c(size, r=1) translate([-size[0]/2, -size[1]/2, 0]) rrect(size, r);
 
 module base() {
   difference() {
-    rrect(outer, corner_r);
+    rrect([outer[0], outer[1], outer[2]-lid_t], corner_r);   // walls stop where the lid plate starts
     // cavity
     translate([wall, front_t, floor_t]) cube([inner[0], inner[1], 60]);
     // right wall port openings
@@ -97,12 +97,16 @@ module base() {
     // OLED glass window
     translate([oled_c[0], -1, oled_c[1]]) rotate([-90,0,0]) rbox_c([oled_glass[0]+0.6, oled_glass[1]+0.6, front_t+2], 1);
     // engraved label under the OLED
-    translate([oled_c[0], 0.6, 8]) rotate([90,0,0]) linear_extrude(1) text(label, size=label_size, halign="center", valign="center", font="Liberation Sans:style=Bold");
+    translate([oled_c[0], 0.6, 10]) rotate([90,0,0]) linear_extrude(1) text(label, size=label_size, halign="center", valign="center", font="Liberation Sans:style=Bold");
     // floor vents under the Pi, and left wall vents
     for (i=[0:vent_slots-1]) translate([pi_pos[0] + 12 + i*9, pi_pos[1] + 8, -1]) rrect([3, 40, floor_t+2], 1.4);
     for (i=[0:4]) translate([-1, front_t + 30 + i*8, 10]) cube([wall+2, 3, 20]);
     // back wall lip clearance is a union below; nothing to cut here.
   }
+  // everything below lives inside the cavity; clip it there so no feature can poke out
+  intersection() {
+    translate([wall, front_t, floor_t]) cube([inner[0], inner[1], inner[2]]);
+    union() {
   // ring cradle on the inside of the front wall
   translate([ring_c[0], front_t, ring_c[1]]) rotate([-90,0,0]) difference() {
     cylinder(d=ring_od+2*fit+3, h=ring_h+0.6);
@@ -129,6 +133,8 @@ module base() {
   }
   // back wall lip the lid hooks slide under
   translate([wall+2, outer[1]-wall-1.5, floor_t+inner[2]-4]) cube([inner[0]-4, 1.5, 1.5]);
+    }
+  }
 }
 
 module lid() {
