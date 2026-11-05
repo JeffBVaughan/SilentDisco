@@ -108,13 +108,13 @@ module base() {
     translate([wall, front_t, floor_t]) cube([inner[0], inner[1], inner[2]]);
     union() {
   // ring cradle on the inside of the front wall
+  // (the tube's foot is wider than the window recess so it bonds to the face, not to air)
   translate([ring_c[0], front_t, ring_c[1]]) rotate([-90,0,0]) difference() {
-    cylinder(d=ring_od+2*fit+3, h=ring_h+0.6);
+    cylinder(d=ring_od+2*fit+6, h=ring_h+0.6);
     translate([0,0,-1]) cylinder(d=ring_od+2*fit, h=10);
     // gap for the ring's wires
     translate([-4, -ring_od/2-5, -1]) cube([8, 6, 10]);
   }
-  translate([ring_c[0], front_t, ring_c[1]]) rotate([-90,0,0]) cylinder(d=ring_id-2*fit, h=1.2);   // centre boss keeps it concentric
   // OLED posts
   translate([oled_c[0]-oled_glass_offset[0], front_t, oled_c[1]-oled_glass_offset[1]])
     for (x=[-1,1], z=[-1,1]) translate([x*oled_holes[0]/2, 0, z*oled_holes[1]/2]) rotate([-90,0,0]) difference() {
