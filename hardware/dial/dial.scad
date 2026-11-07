@@ -57,7 +57,10 @@ win_ro    = 22.2;                     // quadrant windows, outer radius (inside 
 win_ri    = 15.0;                     // inner radius (centre stays opaque)
 rib_w     = 2.5;                      // ribs between quadrants
 window_t  = 1.2;                      // clear disc
-window_d  = ring_od + 2.5;
+window_d  = ring_od + 2.5;            // 47
+// printed holes come out 0.3 to 0.5 mm under size, so these pockets get real room
+ring_clear   = 0.7;                   // per side, ring pocket (drawn 45.9 for the 44.5 ring)
+window_clear = 0.6;                   // per side, window recess (drawn 48.2 for the 47 disc)
 
 oled_pcb  = [27.5, 27.5];
 oled_holes = [23.5, 23.5];            // hole pitch, adjust to your module
@@ -97,7 +100,7 @@ module base() {
           difference() { circle(win_ro+rib_w/2); circle(win_ri-rib_w/2); }
           polygon([[0,0],[100,0],[100,100],[0,100]]);
         }
-      translate([0,0,front_t-window_t]) cylinder(d=window_d+2*fit, h=10);
+      translate([0,0,front_t-window_t]) cylinder(d=window_d+2*window_clear, h=10);
     }
     // ribs are what is left between the four cuts; the centre disc stays opaque.
     // OLED glass window
@@ -116,8 +119,10 @@ module base() {
   // ring cradle on the inside of the front wall
   // (the tube's foot is wider than the window recess so it bonds to the face, not to air)
   translate([ring_c[0], front_t, ring_c[1]]) rotate([-90,0,0]) difference() {
-    cylinder(d=ring_od+2*fit+6, h=ring_h+0.6);
-    translate([0,0,-1]) cylinder(d=ring_od+2*fit, h=10);
+    cylinder(d=ring_od+2*ring_clear+6, h=ring_h+0.6);
+    translate([0,0,-1]) cylinder(d=ring_od+2*ring_clear, h=10);
+    // lead-in chamfer at the mouth so the ring finds the pocket
+    translate([0,0,ring_h+0.6-0.8]) cylinder(d1=ring_od+2*ring_clear, d2=ring_od+2*ring_clear+1.6, h=0.81);
     // gap for the ring's wires
     translate([-4, -ring_od/2-5, -1]) cube([8, 6, 10]);
   }
@@ -169,7 +174,7 @@ module lid() {
 }
 
 module window() {
-  cylinder(d=window_d, h=window_t);
+  cylinder(d=window_d-0.4, h=window_t);   // printed discs come out a touch over size
 }
 
 module components() {
